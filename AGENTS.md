@@ -62,11 +62,20 @@ If you ever change the package name, update it in **three** places: `package.jso
 
 ## CLI design notes
 
-- The bash original took a single optional date arg or the literal `today`. The TS version preserves that and adds `--from`, `--to`, `--author`, `--repo <path...>`.
+- The bash original took a single optional date arg or the literal `today`. The TS version preserves that and adds `--from`, `--to`, `--author`, `--repo <path...>`, `--format`, `--ticket-pattern`.
 - A positional date narrows both `--from` and `--to` to the same day. Mixing `[date]` with `--from/--to` lets the positional win (intentional; matches the bash behavior).
-- Ticket extraction is a single regex in `src/git.ts`: `/\b([A-Z][A-Z0-9]+-\d+)\b/`. Uppercase-only by design — `abc-123` is treated as not-a-ticket. The first match wins.
+- Ticket extraction is **configurable** via `src/config.ts` presets (`jira`, `github`, `conventional`, `custom`). The JIRA preset is the default. The first regex match wins; the first capture group is preferred, falling back to the full match for capture-group-less custom regexes.
 - The description column is the **full** commit subject, including the `(TICKET)` part — the user explicitly chose this in the scoping question.
 - `git log` is invoked with `execFile` (not `exec`) to avoid shell injection on the author argument. Don't refactor to a shell-string form.
+
+## Configuration
+
+`src/config.ts` handles loading, validation, and `~` expansion.
+
+- **Resolution order**: CLI flags > repo-level config (via `cosmiconfig`, searches up from cwd) > global config (`$XDG_CONFIG_HOME/wdid/config.json`, defaulting to `~/.config/wdid/config.json`) > built-in defaults.
+- **Configs do not merge across levels** — the first found wins in full. This is intentional; merging makes precedence opaque. If you want to override one field, copy the whole config.
+- **Validation** is hand-rolled in `validateConfig`. If the schema grows beyond ~6 fields, switch to zod rather than letting the manual validator sprawl.
+- **Custom-format precedence on the CLI**: `--ticket-pattern` implies `--format custom` and overrides `--format`. Document this in any new help text.
 
 ## Personal data policy
 

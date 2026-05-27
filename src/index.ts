@@ -1,6 +1,12 @@
 import { Command } from 'commander';
 import { getCommits, getGitUserName } from './git.js';
 import { renderEmpty, renderError, renderTable } from './format.js';
+import {
+  expandPath,
+  getTicketPattern,
+  loadConfig,
+  type TicketFormat,
+} from './config.js';
 
 declare const __VERSION__: string;
 
@@ -9,7 +15,16 @@ interface CliOptions {
   to?: string;
   author?: string;
   repo?: string[];
+  format?: string;
+  ticketPattern?: string;
 }
+
+const VALID_PRESETS: readonly TicketFormat[] = [
+  'jira',
+  'github',
+  'conventional',
+  'custom',
+];
 
 function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -31,8 +46,37 @@ async function run(
   dateArg: string | undefined,
   options: CliOptions,
 ): Promise<void> {
+  const config = await loadConfig(process.cwd());
+
+  let format: TicketFormat;
+  let customPattern: string | undefined;
+
+  if (options.ticketPattern) {
+    format = 'custom';
+    customPattern = options.ticketPattern;
+  } else if (options.format) {
+    if (!VALID_PRESETS.includes(options.format as TicketFormat)) {
+      throw new Error(
+        `invalid --format "${options.format}" — must be one of ${VALID_PRESETS.join(', ')}`,
+      );
+    }
+
+    format = options.format as TicketFormat;
+    customPattern = config.customPattern;
+  } else {
+    format = config.format ?? 'jira';
+    customPattern = config.customPattern;
+  }
+
+  const pattern = getTicketPattern(format, customPattern);
+
+  const configRepos = config.defaultRepos?.map(expandPath) ?? [];
   const repos =
-    options.repo && options.repo.length > 0 ? options.repo : [process.cwd()];
+    options.repo && options.repo.length > 0
+      ? options.repo
+      : configRepos.length > 0
+        ? configRepos
+        : [process.cwd()];
 
   let from = options.from ? resolveDate(options.from) : undefined;
   let to = options.to ? resolveDate(options.to) : undefined;
@@ -45,8 +89,9 @@ async function run(
 
   const allEntries = [];
   for (const cwd of repos) {
-    const author = options.author ?? (await getGitUserName(cwd));
-    const entries = await getCommits({ author, from, to, cwd });
+    const author =
+      options.author ?? config.defaultAuthor ?? (await getGitUserName(cwd));
+    const entries = await getCommits({ author, from, to, cwd, pattern });
     allEntries.push(...entries);
   }
 
@@ -72,11 +117,19 @@ program
   .option('--to <date>', 'end date (YYYY-MM-DD or "today")')
   .option(
     '--author <name>',
-    'override the git author (defaults to git config user.name)',
+    'override the git author (defaults to git config user.name, then defaultAuthor in config)',
   )
   .option(
     '--repo <path...>',
-    'one or more repo paths to query (defaults to current directory)',
+    'one or more repo paths to query (overrides defaultRepos in config; defaults to current directory)',
+  )
+  .option(
+    '--format <preset>',
+    'ticket format: jira | github | conventional | custom (default: jira, or config.format)',
+  )
+  .option(
+    '--ticket-pattern <regex>',
+    'custom regex for ticket extraction (implies --format custom; overrides --format)',
   )
   .action(async (dateArg: string | undefined, options: CliOptions) => {
     try {

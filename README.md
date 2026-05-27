@@ -41,13 +41,51 @@ If a commit doesn't reference a ticket, the Ticket column is left blank (rendere
 
 ## Options
 
-| Option             | Description                                                           |
-| ------------------ | --------------------------------------------------------------------- |
-| `[date]`           | A `YYYY-MM-DD` date or the literal `today`. Omit to show all history. |
-| `--from <date>`    | Start date (inclusive).                                               |
-| `--to <date>`      | End date (inclusive).                                                 |
-| `--author <name>`  | Override the git author. Defaults to `git config user.name`.          |
-| `--repo <path...>` | One or more repo paths to query. Defaults to the current directory.   |
+| Option                     | Description                                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------------------- |
+| `[date]`                   | A `YYYY-MM-DD` date or the literal `today`. Omit to show all history.                        |
+| `--from <date>`            | Start date (inclusive).                                                                      |
+| `--to <date>`              | End date (inclusive).                                                                        |
+| `--author <name>`          | Override the git author. Defaults to `git config user.name` (or `defaultAuthor` in config).  |
+| `--repo <path...>`         | One or more repo paths to query. Defaults to `defaultRepos` in config, then the current dir. |
+| `--format <preset>`        | Ticket format: `jira`, `github`, `conventional`, or `custom`. Defaults to `jira`.            |
+| `--ticket-pattern <regex>` | Custom regex for ticket extraction. Implies `--format custom`; overrides `--format`.         |
+
+## Configuration
+
+`wdid` looks for a config file in this order:
+
+1. **Repo-level** (current directory and walking up): `wdid.config.{js,cjs,mjs,ts,json,yaml,yml}`, `.wdidrc{,.json,.yaml,.yml,.js,.cjs}`, or a `"wdid"` field in `package.json`.
+2. **Global**: `~/.config/wdid/config.json` (honors `XDG_CONFIG_HOME`).
+
+CLI flags always win. The first match in this list is used in full (configs do not merge across levels).
+
+### Schema
+
+```json
+{
+  "format": "jira",
+  "customPattern": "^\\[([A-Z]+-\\d+)\\]",
+  "defaultAuthor": "Jane Doe",
+  "defaultRepos": ["~/work/api", "~/work/web"]
+}
+```
+
+| Field           | Type                                               | Description                                                                        |
+| --------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `format`        | `"jira" \| "github" \| "conventional" \| "custom"` | Ticket extraction preset. Default `jira`.                                          |
+| `customPattern` | `string`                                           | Regex used when `format` is `"custom"`. First capture group wins, else full match. |
+| `defaultAuthor` | `string`                                           | Used when `--author` is not passed and you want to skip the `git config` lookup.   |
+| `defaultRepos`  | `string[]`                                         | Paths to query when no `--repo` is given. `~` is expanded.                         |
+
+### Format presets
+
+| Preset         | Matches                                          | Example commit → ticket                |
+| -------------- | ------------------------------------------------ | -------------------------------------- |
+| `jira`         | `ABC-123` style (uppercase project key + digits) | `feat(ABC-123): add login` → `ABC-123` |
+| `github`       | `#123` style                                     | `Closes #42` → `42`                    |
+| `conventional` | Conventional Commit `type(scope)!`               | `feat(auth)!: ...` → `feat(auth)!`     |
+| `custom`       | Your `customPattern` regex                       | depends on the regex                   |
 
 ## Development
 

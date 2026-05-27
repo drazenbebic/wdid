@@ -11,6 +11,7 @@ export interface CommitEntry {
 
 export interface GitLogOptions {
   author: string;
+  pattern: RegExp;
   from?: string;
   to?: string;
   cwd: string;
@@ -19,12 +20,14 @@ export interface GitLogOptions {
 const FIELD_SEP = '\x1f';
 const RECORD_SEP = '\x1e';
 
-const JIRA_TICKET_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/;
+export function extractTicket(message: string, pattern: RegExp): string | null {
+  const match = message.match(pattern);
 
-export function extractTicket(message: string): string | null {
-  const match = message.match(JIRA_TICKET_RE);
+  if (!match) {
+    return null;
+  }
 
-  return match ? match[1]! : null;
+  return match[1] ?? match[0];
 }
 
 export async function getGitUserName(cwd: string): Promise<string> {
@@ -83,7 +86,7 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
 
       return {
         date,
-        ticket: extractTicket(subject),
+        ticket: extractTicket(subject, opts.pattern),
         description: subject,
       };
     });
