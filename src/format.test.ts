@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderTable } from './format.js';
+import { renderTable, renderTableGroupedByDay } from './format.js';
 
 // eslint-disable-next-line no-control-regex
 const ANSI = /\x1b\[[0-9;]*m/g;
@@ -117,6 +117,72 @@ describe('renderTable', () => {
     );
     expect(output).toContain('feat(ABC-123): add login');
     expect(output).toContain('[feat/login]');
+  });
+
+  it('renders day section headers in grouped mode', () => {
+    const output = stripAnsi(
+      renderTableGroupedByDay([
+        {
+          date: '2026-05-27',
+          time: '17:44',
+          ticket: null,
+          description: 'feat: a',
+          branch: null,
+        },
+        {
+          date: '2026-05-27',
+          time: '17:40',
+          ticket: null,
+          description: 'fix: b',
+          branch: null,
+        },
+        {
+          date: '2026-05-26',
+          time: '11:08',
+          ticket: null,
+          description: 'chore: c',
+          branch: null,
+        },
+      ]),
+    );
+
+    expect(output).toContain('Time');
+    expect(output).not.toContain('Date');
+    expect(output).toContain('2026-05-27');
+    expect(output).toContain('2026-05-26');
+    expect(output).toContain('17:44');
+    expect(output).toContain('11:08');
+  });
+
+  it('does not repeat the date heading for consecutive same-day rows', () => {
+    const output = stripAnsi(
+      renderTableGroupedByDay([
+        {
+          date: '2026-05-27',
+          time: '17:44',
+          ticket: null,
+          description: 'a',
+          branch: null,
+        },
+        {
+          date: '2026-05-27',
+          time: '17:40',
+          ticket: null,
+          description: 'b',
+          branch: null,
+        },
+        {
+          date: '2026-05-27',
+          time: '17:36',
+          ticket: null,
+          description: 'c',
+          branch: null,
+        },
+      ]),
+    );
+
+    const matches = output.match(/2026-05-27/g) ?? [];
+    expect(matches.length).toBe(1);
   });
 
   it('omits the branch suffix when null', () => {

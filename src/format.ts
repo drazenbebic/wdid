@@ -44,6 +44,45 @@ export function renderTable(
   return table.toString();
 }
 
+export function renderTableGroupedByDay(
+  entries: CommitEntry[],
+  ticketColumnLabel = 'Ticket',
+): string {
+  const table = new Table({
+    head: [
+      chalk.bold.cyan('Time'),
+      chalk.bold.cyan(ticketColumnLabel),
+      chalk.bold.cyan('Description'),
+    ],
+    style: { head: [], border: [] },
+    wordWrap: true,
+    colWidths: [8, 14, 90],
+  });
+
+  let currentDate = '';
+
+  for (const entry of entries) {
+    if (entry.date && entry.date !== currentDate) {
+      table.push([
+        {
+          content: chalk.bold(entry.date),
+          colSpan: 3,
+          hAlign: 'left' as const,
+        },
+      ]);
+      currentDate = entry.date;
+    }
+
+    table.push([
+      entry.time ? chalk.dim(entry.time) : chalk.gray('—'),
+      entry.ticket ? chalk.yellow(entry.ticket) : chalk.gray('—'),
+      renderDescriptionCell(entry),
+    ]);
+  }
+
+  return table.toString();
+}
+
 export function renderEmpty(): string {
   return chalk.gray('No commits found for the given filters.');
 }

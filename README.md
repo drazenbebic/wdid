@@ -41,6 +41,23 @@ The time is rendered dimmed and shown in your local timezone (parsed from the co
 
 If a commit doesn't reference a ticket, the Ticket column is left blank (rendered as `—`).
 
+With `--group-by-day`, the date moves into a section heading instead of repeating per row, making longer outputs feel more like a journal:
+
+```
+┌───────┬──────────────┬─────────────────────────────────────┐
+│ Time  │ Ticket       │ Description                         │
+├───────┴──────────────┴─────────────────────────────────────┤
+│ 2026-05-27                                                 │
+├───────┬──────────────┬─────────────────────────────────────┤
+│ 16:42 │ ABC-123      │ feat(ABC-123): add login flow       │
+│ 11:08 │ —            │ chore: bump deps                    │
+├───────┴──────────────┴─────────────────────────────────────┤
+│ 2026-05-26                                                 │
+├───────┬──────────────┬─────────────────────────────────────┤
+│ 17:53 │ ABC-119      │ fix(ABC-119): handle empty payload  │
+└───────┴──────────────┴─────────────────────────────────────┘
+```
+
 ## Options
 
 | Option                     | Description                                                                                  |
@@ -54,6 +71,7 @@ If a commit doesn't reference a ticket, the Ticket column is left blank (rendere
 | `--ticket-pattern <regex>` | Custom regex for ticket extraction. Implies `--format custom`; overrides `--format`.         |
 | `--no-color`               | Disable colored output. Also honored via the `NO_COLOR` env var.                             |
 | `--limit <N>`              | Cap the table to the most recent `N` rows. Positive integer.                                 |
+| `--group-by-day`           | Group rows under a bold date heading per day; the row only shows the time.                   |
 
 ## Configuration
 

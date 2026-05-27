@@ -1,7 +1,12 @@
 import chalk from 'chalk';
 import { Command } from 'commander';
 import { getCommits, getGitUserName } from './git.js';
-import { renderEmpty, renderError, renderTable } from './format.js';
+import {
+  renderEmpty,
+  renderError,
+  renderTable,
+  renderTableGroupedByDay,
+} from './format.js';
 import {
   expandPath,
   getColumnLabel,
@@ -21,6 +26,7 @@ interface CliOptions {
   ticketPattern?: string;
   color?: boolean;
   limit?: string;
+  groupByDay?: boolean;
 }
 
 function parseLimit(raw: string | undefined): number | undefined {
@@ -141,7 +147,10 @@ async function run(
   }
 
   const ticketColumnLabel = getColumnLabel(format, config.ticketColumnLabel);
-  process.stdout.write(renderTable(display, ticketColumnLabel) + '\n');
+  const rendered = options.groupByDay
+    ? renderTableGroupedByDay(display, ticketColumnLabel)
+    : renderTable(display, ticketColumnLabel);
+  process.stdout.write(rendered + '\n');
 }
 
 const program = new Command();
@@ -176,6 +185,10 @@ program
   .option(
     '--limit <N>',
     'cap the table to the most recent N rows (positive integer)',
+  )
+  .option(
+    '--group-by-day',
+    'group rows under a bold date heading per day (time-only in row)',
   )
   .action(async (dateArg: string | undefined, options: CliOptions) => {
     if (shouldDisableColor(options)) {
