@@ -17,11 +17,15 @@ export interface WdidConfig {
   togglDefaultProjectId?: number;
   togglDefaultDurationMinutes?: number;
   togglDayStartHour?: number;
+  togglOneEntryPerTicket?: boolean;
+  togglIgnoreSubjectPattern?: string;
 }
 
 export const TOGGL_DEFAULTS = {
   durationMinutes: 30,
   dayStartHour: 9,
+  oneEntryPerTicket: true,
+  ignoreSubjectPattern: '\\bmerge\\b',
 } as const;
 
 export const DEFAULT_COLUMN_LABELS: Record<TicketFormat, string> = {
@@ -253,6 +257,28 @@ export function validateConfig(raw: unknown): WdidConfig {
     }
 
     cfg.togglDayStartHour = obj.togglDayStartHour;
+  }
+
+  if ('togglOneEntryPerTicket' in obj) {
+    if (typeof obj.togglOneEntryPerTicket !== 'boolean') {
+      throw new Error('togglOneEntryPerTicket must be a boolean');
+    }
+
+    cfg.togglOneEntryPerTicket = obj.togglOneEntryPerTicket;
+  }
+
+  if ('togglIgnoreSubjectPattern' in obj) {
+    if (typeof obj.togglIgnoreSubjectPattern !== 'string') {
+      throw new Error('togglIgnoreSubjectPattern must be a string');
+    }
+
+    if (obj.togglIgnoreSubjectPattern.length > MAX_CUSTOM_PATTERN_LENGTH) {
+      throw new Error(
+        `togglIgnoreSubjectPattern is ${obj.togglIgnoreSubjectPattern.length} characters; limit is ${MAX_CUSTOM_PATTERN_LENGTH}`,
+      );
+    }
+
+    cfg.togglIgnoreSubjectPattern = obj.togglIgnoreSubjectPattern;
   }
 
   return cfg;

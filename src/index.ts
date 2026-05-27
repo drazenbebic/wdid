@@ -18,6 +18,7 @@ import {
   type WdidConfig,
 } from './config.js';
 import {
+  enumerateDates,
   fetchSyncedShas,
   planEntries,
   pushEntries,
@@ -175,6 +176,29 @@ interface TogglSyncCliOptions {
   workspace?: string;
   repo?: string[];
   author?: string;
+  from?: string;
+  to?: string;
+}
+
+function resolveTogglSyncDates(
+  dateArg: string | undefined,
+  options: TogglSyncCliOptions,
+): string[] {
+  if (dateArg && (options.from || options.to)) {
+    throw new Error(
+      'cannot combine the positional [date] with --from / --to — use one or the other',
+    );
+  }
+
+  if (options.from || options.to) {
+    if (!options.from || !options.to) {
+      throw new Error('--from and --to must both be provided');
+    }
+
+    return enumerateDates(resolveDate(options.from), resolveDate(options.to));
+  }
+
+  return [resolveDate(dateArg ?? 'today')];
 }
 
 function resolveTogglAuth(config: WdidConfig): TogglAuth | null {
@@ -194,11 +218,7 @@ function formatHHMM(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function renderTogglPlan(
-  plan: TogglEntryPlan[],
-  date: string,
-  durationSeconds: number,
-): string {
+function renderTogglPlan(plan: TogglEntryPlan[], date: string): string {
   const newCount = plan.filter(p => !p.alreadySynced).length;
   const skipCount = plan.length - newCount;
   const lines: string[] = [];
@@ -214,7 +234,7 @@ function renderTogglPlan(
   for (const entry of plan) {
     const start = formatHHMM(entry.start);
     const endIso = new Date(
-      new Date(entry.start).getTime() + durationSeconds * 1000,
+      new Date(entry.start).getTime() + entry.durationSeconds * 1000,
     ).toISOString();
     const end = formatHHMM(endIso);
     const status = entry.alreadySynced
@@ -226,13 +246,133 @@ function renderTogglPlan(
         : chalk.cyan(
             `[project ${entry.projectId}${entry.matchedTicketPrefix ? ` ← ${entry.matchedTicketPrefix}` : ' (default)'}]`,
           );
+    const commitNote =
+      entry.commitCount > 1 ? chalk.dim(` (${entry.commitCount} commits)`) : '';
 
     lines.push(
-      `  ${status}  ${chalk.dim(`${start}–${end}`)}  ${entry.description}  ${project}`,
+      `  ${status}  ${chalk.dim(`${start}–${end}`)}  ${entry.description}  ${project}${commitNote}`,
     );
   }
 
   return lines.join('\n');
+}
+
+interface DayResult {
+  date: string;
+  planned: number;
+  pushed: number;
+  skipped: number;
+  failures: number;
+  error?: string;
+}
+
+interface DayContext {
+  auth: TogglAuth | null;
+  workspaceId: number | null;
+  dryRun: boolean;
+  repos: string[];
+  cliAuthor?: string;
+  configAuthor?: string;
+  pattern: RegExp;
+  defaultDurationMinutes: number;
+  dayStartHour: number;
+  oneEntryPerTicket: boolean;
+  ignoreSubjectPattern?: RegExp;
+  projects: Record<string, number>;
+  defaultProjectId?: number;
+}
+
+async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
+  const result: DayResult = {
+    date,
+    planned: 0,
+    pushed: 0,
+    skipped: 0,
+    failures: 0,
+  };
+
+  try {
+    const perRepoCommits = await Promise.all(
+      ctx.repos.map(async cwd => {
+        const author =
+          ctx.cliAuthor ?? ctx.configAuthor ?? (await getGitUserName(cwd));
+
+        return getCommits({
+          author,
+          from: date,
+          to: date,
+          cwd,
+          pattern: ctx.pattern,
+        });
+      }),
+    );
+    const commits = perRepoCommits.flat();
+
+    const existingSyncedShas = ctx.auth
+      ? await fetchSyncedShas(ctx.auth, date)
+      : new Set<string>();
+
+    const plan = planEntries(commits, {
+      date,
+      defaultDurationMinutes: ctx.defaultDurationMinutes,
+      dayStartHour: ctx.dayStartHour,
+      projects: ctx.projects,
+      defaultProjectId: ctx.defaultProjectId,
+      existingSyncedShas,
+      oneEntryPerTicket: ctx.oneEntryPerTicket,
+      ignoreSubjectPattern: ctx.ignoreSubjectPattern,
+    });
+
+    result.planned = plan.length;
+
+    if (plan.length === 0) {
+      process.stdout.write(
+        chalk.gray(`No commits to sync for ${date}.`) + '\n',
+      );
+
+      return result;
+    }
+
+    process.stdout.write(renderTogglPlan(plan, date) + '\n');
+
+    if (ctx.dryRun) {
+      return result;
+    }
+
+    if (!ctx.auth || ctx.workspaceId === null) {
+      throw new Error('internal: auth/workspaceId resolved to null');
+    }
+
+    const pushResult = await pushEntries(ctx.auth, ctx.workspaceId, plan);
+    result.pushed = pushResult.pushed;
+    result.skipped = pushResult.skipped;
+    result.failures = pushResult.failures.length;
+
+    process.stdout.write(
+      '\n' +
+        chalk.bold(
+          `  ${date}: pushed ${pushResult.pushed}, skipped ${pushResult.skipped}`,
+        ) +
+        (pushResult.failures.length > 0
+          ? chalk.red(`, ${pushResult.failures.length} failed`)
+          : '') +
+        '\n',
+    );
+
+    for (const failure of pushResult.failures) {
+      process.stderr.write(
+        chalk.red(
+          `  ${date} failed: ${failure.plan.shortShas.join(',')} — ${failure.reason}`,
+        ) + '\n',
+      );
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    result.error = message;
+    process.stderr.write(chalk.red(`  ${date}: ${message}`) + '\n');
+  }
+
+  return result;
 }
 
 async function runTogglSync(
@@ -241,7 +381,8 @@ async function runTogglSync(
 ): Promise<void> {
   const config = await loadConfig(process.cwd());
 
-  const date = resolveDate(dateArg ?? 'today');
+  const dates = resolveTogglSyncDates(dateArg, options);
+
   const workspaceId =
     (options.workspace
       ? Number.parseInt(options.workspace, 10)
@@ -272,42 +413,37 @@ async function runTogglSync(
         ? configRepos
         : [process.cwd()];
 
-  const perRepoCommits = await Promise.all(
-    repos.map(async cwd => {
-      const author =
-        options.author ?? config.defaultAuthor ?? (await getGitUserName(cwd));
-
-      return getCommits({ author, from: date, to: date, cwd, pattern });
-    }),
-  );
-  const commits = perRepoCommits.flat();
-
-  const existingSyncedShas = auth
-    ? await fetchSyncedShas(auth, date)
-    : new Set<string>();
-
   const defaultDurationMinutes =
     config.togglDefaultDurationMinutes ?? TOGGL_DEFAULTS.durationMinutes;
   const dayStartHour = config.togglDayStartHour ?? TOGGL_DEFAULTS.dayStartHour;
+  const oneEntryPerTicket =
+    config.togglOneEntryPerTicket ?? TOGGL_DEFAULTS.oneEntryPerTicket;
+  const ignoreSubjectSource =
+    config.togglIgnoreSubjectPattern ?? TOGGL_DEFAULTS.ignoreSubjectPattern;
+  const ignoreSubjectPattern = ignoreSubjectSource
+    ? new RegExp(ignoreSubjectSource, 'i')
+    : undefined;
 
-  const plan = planEntries(commits, {
-    date,
+  const ctx: DayContext = {
+    auth,
+    workspaceId,
+    dryRun: options.dryRun ?? false,
+    repos,
+    cliAuthor: options.author,
+    configAuthor: config.defaultAuthor,
+    pattern,
     defaultDurationMinutes,
     dayStartHour,
+    oneEntryPerTicket,
+    ignoreSubjectPattern,
     projects: config.togglProjects ?? {},
     defaultProjectId: config.togglDefaultProjectId,
-    existingSyncedShas,
-  });
+  };
 
-  if (plan.length === 0) {
-    process.stdout.write(chalk.gray(`No commits to sync for ${date}.`) + '\n');
-
-    return;
+  const results: DayResult[] = [];
+  for (const date of dates) {
+    results.push(await syncOneDay(date, ctx));
   }
-
-  process.stdout.write(
-    renderTogglPlan(plan, date, defaultDurationMinutes * 60) + '\n',
-  );
 
   if (options.dryRun) {
     process.stdout.write('\n' + chalk.dim('(dry-run — nothing pushed)') + '\n');
@@ -315,35 +451,32 @@ async function runTogglSync(
     return;
   }
 
-  if (!auth || workspaceId === null) {
-    // Should be unreachable given checks above, but TS doesn't know that.
-    throw new Error('internal: auth/workspaceId resolved to null');
-  }
+  if (dates.length > 1) {
+    const totalPushed = results.reduce((n, r) => n + r.pushed, 0);
+    const totalSkipped = results.reduce((n, r) => n + r.skipped, 0);
+    const totalFailures = results.reduce((n, r) => n + r.failures, 0);
+    const erroredDays = results.filter(r => r.error !== undefined).length;
 
-  const result = await pushEntries(auth, workspaceId, plan);
-
-  process.stdout.write(
-    '\n' +
-      chalk.bold(`Pushed ${result.pushed}, skipped ${result.skipped}`) +
-      (result.failures.length > 0
-        ? chalk.red(`, ${result.failures.length} failed`)
-        : '') +
-      '\n',
-  );
-
-  for (const failure of result.failures) {
-    process.stderr.write(
-      chalk.red(`  failed: ${failure.plan.shortSha} — ${failure.reason}`) +
+    process.stdout.write(
+      '\n' +
+        chalk.bold(
+          `Total across ${dates.length} days: pushed ${totalPushed}, skipped ${totalSkipped}`,
+        ) +
+        (totalFailures > 0 ? chalk.red(`, ${totalFailures} failed`) : '') +
+        (erroredDays > 0 ? chalk.red(`, ${erroredDays} day(s) errored`) : '') +
         '\n',
     );
   }
 
-  if (result.failures.length > 0) {
+  const anyFailed = results.some(r => r.error !== undefined || r.failures > 0);
+
+  if (anyFailed) {
     process.exitCode = 1;
   }
 }
 
 const program = new Command();
+program.enablePositionalOptions();
 
 program
   .name('wdid')
@@ -402,7 +535,7 @@ const togglCmd = program
 togglCmd
   .command('sync [date]')
   .description(
-    "push the day's commits as Toggl time entries (one per commit). Default: today.",
+    "push the day's commits as Toggl time entries. Default: today. Pass --from/--to for a range.",
   )
   .option('--dry-run', 'preview the plan without pushing')
   .option(
@@ -416,6 +549,14 @@ togglCmd
   .option(
     '--author <name>',
     'override the git author (defaults to git config user.name, then defaultAuthor in config)',
+  )
+  .option(
+    '--from <date>',
+    'start of a multi-day range (inclusive). Use with --to. Mutually exclusive with [date].',
+  )
+  .option(
+    '--to <date>',
+    'end of a multi-day range (inclusive). Use with --from. Mutually exclusive with [date].',
   )
   .action(async (dateArg: string | undefined, options: TogglSyncCliOptions) => {
     try {

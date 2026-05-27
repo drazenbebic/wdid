@@ -188,6 +188,7 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
 
   const args = [
     'log',
+    '--exclude=refs/stash',
     '--all',
     '--author-date-order',
     '--regexp-ignore-case',
