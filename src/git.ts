@@ -23,6 +23,7 @@ const JIRA_TICKET_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/;
 
 export function extractTicket(message: string): string | null {
   const match = message.match(JIRA_TICKET_RE);
+
   return match ? match[1]! : null;
 }
 
@@ -32,14 +33,17 @@ export async function getGitUserName(cwd: string): Promise<string> {
       cwd,
     });
     const name = stdout.trim();
+
     if (!name) {
       throw new Error('empty');
     }
+
     return name;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new Error('git is not installed or not on PATH', { cause: err });
     }
+
     throw new Error(
       'could not read git user.name — set it with `git config user.name "Your Name"` or pass --author',
       { cause: err },
@@ -57,8 +61,13 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     `--pretty=format:%cs${FIELD_SEP}%s${RECORD_SEP}`,
   ];
 
-  if (opts.from) args.push(`--after=${opts.from} 00:00`);
-  if (opts.to) args.push(`--before=${opts.to} 23:59`);
+  if (opts.from) {
+    args.push(`--after=${opts.from} 00:00`);
+  }
+
+  if (opts.to) {
+    args.push(`--before=${opts.to} 23:59`);
+  }
 
   const { stdout } = await execFileAsync('git', args, {
     cwd: opts.cwd,
@@ -71,6 +80,7 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     .filter(r => r.length > 0)
     .map(record => {
       const [date = '', subject = ''] = record.split(FIELD_SEP);
+
       return {
         date,
         ticket: extractTicket(subject),

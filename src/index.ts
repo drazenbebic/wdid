@@ -19,9 +19,11 @@ function resolveDate(input: string): string {
   if (input === 'today') {
     return new Date().toISOString().slice(0, 10);
   }
+
   if (!isIsoDate(input)) {
     throw new Error(`invalid date "${input}" — expected YYYY-MM-DD or "today"`);
   }
+
   return input;
 }
 
@@ -52,6 +54,7 @@ async function run(
 
   if (allEntries.length === 0) {
     process.stdout.write(renderEmpty() + '\n');
+
     return;
   }
 

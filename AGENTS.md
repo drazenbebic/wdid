@@ -80,6 +80,8 @@ The user operates under an organization policy that prohibits personal data in r
 - **`pnpm publish --no-git-checks`** is in the release workflow because the publish job runs on a fresh checkout that release-please tagged — without `--no-git-checks` pnpm refuses to publish from a detached/different-branch state. Don't remove the flag.
 - **`@types/node` is pinned to `^20.x`** on purpose — it must track the `engines.node` floor, not the latest Node. Bumping it (e.g. to `^25`) would silently make Node-22+/25+ APIs look type-safe, and they'd then crash on Node 20 at runtime. When raising the floor, raise both together.
 - **After running `pnpm update --latest`**, always re-pin `@types/node` back to the floor — `update --latest` doesn't know about this rule.
+- **`eslint-config-prettier` must come BEFORE our project rules in `eslint.config.js`**, not after. It disables 350+ rules including `curly` defensively — putting our custom rules last lets us re-enable the ones we actually want. If you ever see "I enabled rule X but it doesn't fire", check the config order first.
+- **Pre-commit hook (`.husky/pre-commit`)** runs `pnpm exec lint-staged`. The `lint-staged` config in `package.json` runs `eslint --fix` + `prettier --write` on staged TS/JS, and `prettier --write` on staged JSON/Markdown/YAML. The `prepare: husky` script installs the hook on `pnpm install`. If the hook ever silently stops firing on a new clone, run `pnpm install` again or `pnpm exec husky` directly.
 
 ## Tasks the user has asked for explicitly
 
