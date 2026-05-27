@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.0](https://github.com/drazenbebic/wdid/compare/v0.1.3...v0.2.0) (2026-05-27)
+
+
+### Features
+
+* add --group-by-day to render the table as a per-day journal ([b2cea40](https://github.com/drazenbebic/wdid/commit/b2cea406f30c0fe444a87b9bdc44defa890faa59))
+* add --json to emit commit entries as a JSON array ([8958d29](https://github.com/drazenbebic/wdid/commit/8958d29b82e48405814fc218e7cff4542e4014c2))
+* add --limit to cap the table to N most recent rows ([69ccc4a](https://github.com/drazenbebic/wdid/commit/69ccc4a9de2e0568dc1b6947620a0f38965800fd))
+* add --no-color flag and honor NO_COLOR env var ([64bf708](https://github.com/drazenbebic/wdid/commit/64bf7081c250ab01bc35488317925c3dfe8996b4))
+* append feature branch name to the description column ([23be96d](https://github.com/drazenbebic/wdid/commit/23be96d38f8e3c4eea05b91f16770662be90d7c5))
+* auto-pick ticket column label based on format ([d332bac](https://github.com/drazenbebic/wdid/commit/d332bac97bf3e6cc0f3afd9483d5ff4eb516bf54))
+* show commit time in local timezone next to the date ([3639407](https://github.com/drazenbebic/wdid/commit/3639407ef5bb6b192e930e1900215aaf8ad4e9c6))
+
+
+### Bug Fixes
+
+* emit clean errors when not inside a git repository ([fd3e38f](https://github.com/drazenbebic/wdid/commit/fd3e38ff5840dc70087f424fd5f69410e9d2d23e))
+* **security:** cap and validate user-supplied ticket regex ([00d5d04](https://github.com/drazenbebic/wdid/commit/00d5d04426cf5e122b25bafdde0b3f43e1274bdf))
+
+
+### Continuous Integration
+
+* enforce Conventional Commits on PR titles ([d0d488a](https://github.com/drazenbebic/wdid/commit/d0d488a49d57d6d6fb9ddae1aee7576a6cc17749))
+* enforce Conventional Commits on PR titles ([3ff2af8](https://github.com/drazenbebic/wdid/commit/3ff2af88034a25bc615434faaf33f162d7d16734))
+
 ## [0.1.3](https://github.com/drazenbebic/wdid/compare/v0.1.2...v0.1.3) (2026-05-27)
 
 
