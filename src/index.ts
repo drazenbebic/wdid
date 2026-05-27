@@ -3,6 +3,7 @@ import { getCommits, getGitUserName } from './git.js';
 import { renderEmpty, renderError, renderTable } from './format.js';
 import {
   expandPath,
+  getColumnLabel,
   getTicketPattern,
   loadConfig,
   type TicketFormat,
@@ -105,7 +106,8 @@ async function run(
     return;
   }
 
-  process.stdout.write(renderTable(allEntries) + '\n');
+  const ticketColumnLabel = getColumnLabel(format, config.ticketColumnLabel);
+  process.stdout.write(renderTable(allEntries, ticketColumnLabel) + '\n');
 }
 
 const program = new Command();

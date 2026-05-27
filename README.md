@@ -73,21 +73,24 @@ CLI flags always win. The first match in this list is used in full (configs do n
 }
 ```
 
-| Field           | Type                                               | Description                                                                        |
-| --------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `format`        | `"jira" \| "github" \| "conventional" \| "custom"` | Ticket extraction preset. Default `jira`.                                          |
-| `customPattern` | `string`                                           | Regex used when `format` is `"custom"`. First capture group wins, else full match. |
-| `defaultAuthor` | `string`                                           | Used when `--author` is not passed and you want to skip the `git config` lookup.   |
-| `defaultRepos`  | `string[]`                                         | Paths to query when no `--repo` is given. `~` is expanded.                         |
+| Field               | Type                                               | Description                                                                        |
+| ------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `format`            | `"jira" \| "github" \| "conventional" \| "custom"` | Ticket extraction preset. Default `jira`.                                          |
+| `customPattern`     | `string`                                           | Regex used when `format` is `"custom"`. First capture group wins, else full match. |
+| `defaultAuthor`     | `string`                                           | Used when `--author` is not passed and you want to skip the `git config` lookup.   |
+| `defaultRepos`      | `string[]`                                         | Paths to query when no `--repo` is given. `~` is expanded.                         |
+| `ticketColumnLabel` | `string`                                           | Override the auto-picked column header (see below).                                |
 
 ### Format presets
 
-| Preset         | Matches                                          | Example commit → ticket                |
-| -------------- | ------------------------------------------------ | -------------------------------------- |
-| `jira`         | `ABC-123` style (uppercase project key + digits) | `feat(ABC-123): add login` → `ABC-123` |
-| `github`       | `#123` style                                     | `Closes #42` → `42`                    |
-| `conventional` | Conventional Commit `type(scope)!`               | `feat(auth)!: ...` → `feat(auth)!`     |
-| `custom`       | Your `customPattern` regex                       | depends on the regex                   |
+| Preset         | Matches                                          | Example commit → match                 | Column header |
+| -------------- | ------------------------------------------------ | -------------------------------------- | ------------- |
+| `jira`         | `ABC-123` style (uppercase project key + digits) | `feat(ABC-123): add login` → `ABC-123` | `Ticket`      |
+| `github`       | `#123` style                                     | `Closes #42` → `42`                    | `Issue`       |
+| `conventional` | Conventional Commit `type(scope)!`               | `feat(auth)!: ...` → `feat(auth)!`     | `Type`        |
+| `custom`       | Your `customPattern` regex                       | depends on the regex                   | `Match`       |
+
+The column header is picked automatically based on the active format. To override it for a specific preset (e.g. call them "Tasks" instead of "Ticket"), set `ticketColumnLabel` in your config.
 
 ## Development
 

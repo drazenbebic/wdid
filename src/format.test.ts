@@ -50,6 +50,38 @@ describe('renderTable', () => {
     expect(output).toContain('2026-05-27 14:30');
   });
 
+  it('uses the provided ticket column label', () => {
+    const output = stripAnsi(
+      renderTable(
+        [
+          {
+            date: '2026-05-27',
+            time: '14:30',
+            ticket: 'feat(auth)',
+            description: 'feat(auth): add login',
+          },
+        ],
+        'Type',
+      ),
+    );
+    expect(output).toContain('Type');
+    expect(output).not.toContain('Ticket');
+  });
+
+  it('defaults the column label to "Ticket"', () => {
+    const output = stripAnsi(
+      renderTable([
+        {
+          date: '2026-05-27',
+          time: '14:30',
+          ticket: 'ABC-123',
+          description: 'feat(ABC-123): add login',
+        },
+      ]),
+    );
+    expect(output).toContain('Ticket');
+  });
+
   it('renders just the date when time is empty', () => {
     const output = stripAnsi(
       renderTable([

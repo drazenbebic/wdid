@@ -10,11 +10,14 @@ function renderDateCell(entry: CommitEntry): string {
   return `${entry.date} ${chalk.dim(entry.time)}`;
 }
 
-export function renderTable(entries: CommitEntry[]): string {
+export function renderTable(
+  entries: CommitEntry[],
+  ticketColumnLabel = 'Ticket',
+): string {
   const table = new Table({
     head: [
       chalk.bold.cyan('Date'),
-      chalk.bold.cyan('Ticket'),
+      chalk.bold.cyan(ticketColumnLabel),
       chalk.bold.cyan('Description'),
     ],
     style: { head: [], border: [] },

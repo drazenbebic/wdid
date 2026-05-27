@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
+  DEFAULT_COLUMN_LABELS,
   expandPath,
+  getColumnLabel,
   getTicketPattern,
   PRESET_PATTERNS,
   validateConfig,
@@ -23,6 +25,24 @@ describe('getTicketPattern', () => {
 
   it('throws if format=custom without a customPattern', () => {
     expect(() => getTicketPattern('custom')).toThrow(/customPattern/);
+  });
+});
+
+describe('getColumnLabel', () => {
+  it('returns the preset default for each format', () => {
+    expect(getColumnLabel('jira')).toBe('Ticket');
+    expect(getColumnLabel('github')).toBe('Issue');
+    expect(getColumnLabel('conventional')).toBe('Type');
+    expect(getColumnLabel('custom')).toBe('Match');
+  });
+
+  it('honors an override regardless of format', () => {
+    expect(getColumnLabel('jira', 'Tasks')).toBe('Tasks');
+    expect(getColumnLabel('custom', 'Ref')).toBe('Ref');
+  });
+
+  it('exposes the defaults as a stable map', () => {
+    expect(DEFAULT_COLUMN_LABELS.jira).toBe('Ticket');
   });
 });
 
@@ -83,5 +103,15 @@ describe('validateConfig', () => {
   it('rejects non-string-array defaultRepos', () => {
     expect(() => validateConfig({ defaultRepos: ['ok', 42] })).toThrow(/array/);
     expect(() => validateConfig({ defaultRepos: 'just-one' })).toThrow(/array/);
+  });
+
+  it('accepts a string ticketColumnLabel', () => {
+    expect(validateConfig({ ticketColumnLabel: 'Tasks' })).toEqual({
+      ticketColumnLabel: 'Tasks',
+    });
+  });
+
+  it('rejects non-string ticketColumnLabel', () => {
+    expect(() => validateConfig({ ticketColumnLabel: 42 })).toThrow(/string/);
   });
 });

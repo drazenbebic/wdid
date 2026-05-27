@@ -10,6 +10,21 @@ export interface WdidConfig {
   customPattern?: string;
   defaultAuthor?: string;
   defaultRepos?: string[];
+  ticketColumnLabel?: string;
+}
+
+export const DEFAULT_COLUMN_LABELS: Record<TicketFormat, string> = {
+  jira: 'Ticket',
+  github: 'Issue',
+  conventional: 'Type',
+  custom: 'Match',
+};
+
+export function getColumnLabel(
+  format: TicketFormat,
+  override?: string,
+): string {
+  return override ?? DEFAULT_COLUMN_LABELS[format];
 }
 
 export const PRESET_PATTERNS: Record<
@@ -105,6 +120,14 @@ export function validateConfig(raw: unknown): WdidConfig {
     }
 
     cfg.defaultRepos = obj.defaultRepos as string[];
+  }
+
+  if ('ticketColumnLabel' in obj) {
+    if (typeof obj.ticketColumnLabel !== 'string') {
+      throw new Error('ticketColumnLabel must be a string');
+    }
+
+    cfg.ticketColumnLabel = obj.ticketColumnLabel;
   }
 
   return cfg;
