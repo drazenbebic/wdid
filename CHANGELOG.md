@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/drazenbebic/wdid/compare/v0.1.2...v0.1.3) (2026-05-27)
+
+
+### Continuous Integration
+
+* fix package publishing ([90f86c1](https://github.com/drazenbebic/wdid/commit/90f86c133626a9fe8d5a5fab99437d05acbaa364))
+
 ## [0.1.2](https://github.com/drazenbebic/wdid/compare/v0.1.1...v0.1.2) (2026-05-27)
 
 
