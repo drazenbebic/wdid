@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/drazenbebic/wdid/compare/v0.1.1...v0.1.2) (2026-05-27)
+
+
+### Features
+
+* add configurable ticket extraction and config file support ([90a917e](https://github.com/drazenbebic/wdid/commit/90a917e55759e85fa5e63f52eba225cf7932ff83))
+
+
+### Continuous Integration
+
+* fix publishing ([cf301ef](https://github.com/drazenbebic/wdid/commit/cf301ef74b252d3df9365d14a661f6ca3f31c4d2))
+
 ## [0.1.1](https://github.com/drazenbebic/wdid/compare/v0.1.0...v0.1.1) (2026-05-27)
 
 

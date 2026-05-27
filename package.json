@@ -1,6 +1,6 @@
 {
   "name": "@drazenbebic/wdid",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "What did I do? — summarize your git activity per day as a tidy table, grouped by JIRA ticket.",
   "keywords": [
     "git",
