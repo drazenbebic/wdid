@@ -1,3 +1,4 @@
+import chalk from 'chalk';
 import { Command } from 'commander';
 import { getCommits, getGitUserName } from './git.js';
 import { renderEmpty, renderError, renderTable } from './format.js';
@@ -18,6 +19,18 @@ interface CliOptions {
   repo?: string[];
   format?: string;
   ticketPattern?: string;
+  color?: boolean;
+}
+
+function shouldDisableColor(options: CliOptions): boolean {
+  if (options.color === false) {
+    return true;
+  }
+
+  // https://no-color.org/ — any non-empty value disables color.
+  const noColor = process.env.NO_COLOR ?? '';
+
+  return noColor.length > 0;
 }
 
 const VALID_PRESETS: readonly TicketFormat[] = [
@@ -137,7 +150,15 @@ program
     '--ticket-pattern <regex>',
     'custom regex for ticket extraction (implies --format custom; overrides --format)',
   )
+  .option(
+    '--no-color',
+    'disable colored output (also honored via the NO_COLOR env var)',
+  )
   .action(async (dateArg: string | undefined, options: CliOptions) => {
+    if (shouldDisableColor(options)) {
+      chalk.level = 0;
+    }
+
     try {
       await run(dateArg, options);
     } catch (err) {

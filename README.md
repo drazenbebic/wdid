@@ -52,6 +52,7 @@ If a commit doesn't reference a ticket, the Ticket column is left blank (rendere
 | `--repo <path...>`         | One or more repo paths to query. Defaults to `defaultRepos` in config, then the current dir. |
 | `--format <preset>`        | Ticket format: `jira`, `github`, `conventional`, or `custom`. Defaults to `jira`.            |
 | `--ticket-pattern <regex>` | Custom regex for ticket extraction. Implies `--format custom`; overrides `--format`.         |
+| `--no-color`               | Disable colored output. Also honored via the `NO_COLOR` env var.                             |
 
 ## Configuration
 
