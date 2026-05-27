@@ -43,6 +43,31 @@ const VALID_FORMATS: readonly TicketFormat[] = [
   'custom',
 ];
 
+export const MAX_CUSTOM_PATTERN_LENGTH = 500;
+
+function compileUserRegex(pattern: string): RegExp {
+  if (pattern.length > MAX_CUSTOM_PATTERN_LENGTH) {
+    throw new Error(
+      `customPattern is ${pattern.length} characters; limit is ${MAX_CUSTOM_PATTERN_LENGTH}`,
+    );
+  }
+
+  try {
+    // `customPattern` is intentionally user-supplied — accepting an
+    // arbitrary regex is the entire purpose of format=custom. We can't
+    // escape it (that would defeat the feature). Mitigation is the
+    // length cap above plus the fact that wdid only runs locally
+    // against repos the user has chosen to query.
+    // lgtm[js/regex-injection]
+    return new RegExp(pattern);
+  } catch (err) {
+    throw new Error(
+      `customPattern is not a valid regex: ${(err as Error).message}`,
+      { cause: err },
+    );
+  }
+}
+
 export function getTicketPattern(
   format: TicketFormat,
   customPattern?: string,
@@ -52,7 +77,7 @@ export function getTicketPattern(
       throw new Error('format "custom" requires customPattern to be set');
     }
 
-    return new RegExp(customPattern);
+    return compileUserRegex(customPattern);
   }
 
   return PRESET_PATTERNS[format];
@@ -94,6 +119,12 @@ export function validateConfig(raw: unknown): WdidConfig {
   if ('customPattern' in obj) {
     if (typeof obj.customPattern !== 'string') {
       throw new Error('customPattern must be a string');
+    }
+
+    if (obj.customPattern.length > MAX_CUSTOM_PATTERN_LENGTH) {
+      throw new Error(
+        `customPattern is ${obj.customPattern.length} characters; limit is ${MAX_CUSTOM_PATTERN_LENGTH}`,
+      );
     }
 
     cfg.customPattern = obj.customPattern;

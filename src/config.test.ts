@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
   DEFAULT_COLUMN_LABELS,
+  MAX_CUSTOM_PATTERN_LENGTH,
   expandPath,
   getColumnLabel,
   getTicketPattern,
@@ -25,6 +26,19 @@ describe('getTicketPattern', () => {
 
   it('throws if format=custom without a customPattern', () => {
     expect(() => getTicketPattern('custom')).toThrow(/customPattern/);
+  });
+
+  it('rejects a customPattern longer than the length cap', () => {
+    const big = 'a'.repeat(MAX_CUSTOM_PATTERN_LENGTH + 1);
+    expect(() => getTicketPattern('custom', big)).toThrow(
+      new RegExp(`limit is ${MAX_CUSTOM_PATTERN_LENGTH}`),
+    );
+  });
+
+  it('rejects an invalid customPattern with a clean error', () => {
+    expect(() => getTicketPattern('custom', '[unclosed')).toThrow(
+      /not a valid regex/,
+    );
   });
 });
 
@@ -94,6 +108,16 @@ describe('validateConfig', () => {
   it('accepts custom format with customPattern', () => {
     const cfg = { format: 'custom', customPattern: 'FOO-\\d+' };
     expect(validateConfig(cfg)).toEqual(cfg);
+  });
+
+  it('rejects an overlong customPattern at config-load time', () => {
+    const cfg = {
+      format: 'custom',
+      customPattern: 'a'.repeat(MAX_CUSTOM_PATTERN_LENGTH + 1),
+    };
+    expect(() => validateConfig(cfg)).toThrow(
+      new RegExp(`limit is ${MAX_CUSTOM_PATTERN_LENGTH}`),
+    );
   });
 
   it('rejects non-string defaultAuthor', () => {
