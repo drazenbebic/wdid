@@ -17,6 +17,7 @@ export interface GitLogOptions {
   from?: string;
   to?: string;
   cwd: string;
+  limit?: number;
 }
 
 const FIELD_SEP = '\x1f';
@@ -195,6 +196,10 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
 
   if (opts.to) {
     args.push(`--before=${opts.to} 23:59`);
+  }
+
+  if (opts.limit !== undefined) {
+    args.push(`--max-count=${opts.limit}`);
   }
 
   let stdout: string;

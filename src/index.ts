@@ -20,6 +20,21 @@ interface CliOptions {
   format?: string;
   ticketPattern?: string;
   color?: boolean;
+  limit?: string;
+}
+
+function parseLimit(raw: string | undefined): number | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+
+  const n = Number.parseInt(raw, 10);
+
+  if (!Number.isInteger(n) || n < 1 || String(n) !== raw.trim()) {
+    throw new Error(`invalid --limit "${raw}" — must be a positive integer`);
+  }
+
+  return n;
 }
 
 function shouldDisableColor(options: CliOptions): boolean {
@@ -101,12 +116,14 @@ async function run(
     to = day;
   }
 
+  const limit = parseLimit(options.limit);
+
   const perRepoEntries = await Promise.all(
     repos.map(async cwd => {
       const author =
         options.author ?? config.defaultAuthor ?? (await getGitUserName(cwd));
 
-      return getCommits({ author, from, to, cwd, pattern });
+      return getCommits({ author, from, to, cwd, pattern, limit });
     }),
   );
   const allEntries = perRepoEntries.flat();
@@ -115,14 +132,16 @@ async function run(
     `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`),
   );
 
-  if (allEntries.length === 0) {
+  const display = limit !== undefined ? allEntries.slice(0, limit) : allEntries;
+
+  if (display.length === 0) {
     process.stdout.write(renderEmpty() + '\n');
 
     return;
   }
 
   const ticketColumnLabel = getColumnLabel(format, config.ticketColumnLabel);
-  process.stdout.write(renderTable(allEntries, ticketColumnLabel) + '\n');
+  process.stdout.write(renderTable(display, ticketColumnLabel) + '\n');
 }
 
 const program = new Command();
@@ -153,6 +172,10 @@ program
   .option(
     '--no-color',
     'disable colored output (also honored via the NO_COLOR env var)',
+  )
+  .option(
+    '--limit <N>',
+    'cap the table to the most recent N rows (positive integer)',
   )
   .action(async (dateArg: string | undefined, options: CliOptions) => {
     if (shouldDisableColor(options)) {

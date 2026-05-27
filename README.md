@@ -53,6 +53,7 @@ If a commit doesn't reference a ticket, the Ticket column is left blank (rendere
 | `--format <preset>`        | Ticket format: `jira`, `github`, `conventional`, or `custom`. Defaults to `jira`.            |
 | `--ticket-pattern <regex>` | Custom regex for ticket extraction. Implies `--format custom`; overrides `--format`.         |
 | `--no-color`               | Disable colored output. Also honored via the `NO_COLOR` env var.                             |
+| `--limit <N>`              | Cap the table to the most recent `N` rows. Positive integer.                                 |
 
 ## Configuration
 
