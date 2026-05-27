@@ -15,12 +15,12 @@
   "author": "Your Name <you@example.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/wdid.git"
+    "url": "git+https://github.com/drazenbebic/wdid.git"
   },
   "bugs": {
-    "url": "https://github.com/your-org/wdid/issues"
+    "url": "https://github.com/drazenbebic/wdid/issues"
   },
-  "homepage": "https://github.com/your-org/wdid#readme",
+  "homepage": "https://github.com/drazenbebic/wdid#readme",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
