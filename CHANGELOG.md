@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/drazenbebic/wdid/compare/v0.2.0...v0.3.0) (2026-05-27)
+
+
+### Features
+
+* add config commands ([#7](https://github.com/drazenbebic/wdid/issues/7)) ([7d4b5bb](https://github.com/drazenbebic/wdid/commit/7d4b5bb9f309421cbaa833fd70a8803a962fc0dc))
+* integrate with Toggl (one entry per ticket, idempotent) ([#5](https://github.com/drazenbebic/wdid/issues/5)) ([1a03e03](https://github.com/drazenbebic/wdid/commit/1a03e03d3f322ed7b0f2c91bd2640c0fc7e3250e))
+
 ## [0.2.0](https://github.com/drazenbebic/wdid/compare/v0.1.3...v0.2.0) (2026-05-27)
 
 
