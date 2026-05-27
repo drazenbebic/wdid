@@ -88,13 +88,15 @@ async function run(
     to = day;
   }
 
-  const allEntries = [];
-  for (const cwd of repos) {
-    const author =
-      options.author ?? config.defaultAuthor ?? (await getGitUserName(cwd));
-    const entries = await getCommits({ author, from, to, cwd, pattern });
-    allEntries.push(...entries);
-  }
+  const perRepoEntries = await Promise.all(
+    repos.map(async cwd => {
+      const author =
+        options.author ?? config.defaultAuthor ?? (await getGitUserName(cwd));
+
+      return getCommits({ author, from, to, cwd, pattern });
+    }),
+  );
+  const allEntries = perRepoEntries.flat();
 
   allEntries.sort((a, b) =>
     `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`),
