@@ -190,7 +190,6 @@ describe('renderConfigList', () => {
 
   it('skips unset fields', () => {
     const out = renderConfigList({ defaultAuthor: 'Jane Doe' });
-    console.log('OUT:', out);
     expect(out).toContain('Key');
     expect(out).toContain('Value');
     expect(out).toContain('defaultAuthor');
