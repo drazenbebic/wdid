@@ -1,0 +1,66 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
+
+export interface CommitEntry {
+  date: string;
+  ticket: string | null;
+  description: string;
+}
+
+export interface GitLogOptions {
+  author: string;
+  from?: string;
+  to?: string;
+  cwd: string;
+}
+
+const FIELD_SEP = '\x1f';
+const RECORD_SEP = '\x1e';
+
+const JIRA_TICKET_RE = /\b([A-Z][A-Z0-9]+-\d+)\b/;
+
+export function extractTicket(message: string): string | null {
+  const match = message.match(JIRA_TICKET_RE);
+  return match ? match[1]! : null;
+}
+
+export async function getGitUserName(cwd: string): Promise<string> {
+  const { stdout } = await execFileAsync('git', ['config', 'user.name'], {
+    cwd,
+  });
+  return stdout.trim();
+}
+
+export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
+  const args = [
+    'log',
+    '--all',
+    '--author-date-order',
+    '--regexp-ignore-case',
+    `--author=${opts.author}`,
+    `--pretty=format:%cs${FIELD_SEP}%s${RECORD_SEP}`,
+  ];
+
+  if (opts.from) args.push(`--after=${opts.from} 00:00`);
+  if (opts.to) args.push(`--before=${opts.to} 23:59`);
+
+  const { stdout } = await execFileAsync('git', args, {
+    cwd: opts.cwd,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+
+  return stdout
+    .split(RECORD_SEP)
+    .map(r => r.trim())
+    .filter(r => r.length > 0)
+    .map(record => {
+      const [date = '', subject = ''] = record.split(FIELD_SEP);
+      return {
+        date,
+        ticket: extractTicket(subject),
+        description: subject,
+      };
+    });
+}

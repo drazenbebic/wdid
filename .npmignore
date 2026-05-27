@@ -1,0 +1,7 @@
+src/
+node_modules/
+.github/
+tsup.config.ts
+tsconfig.json
+release-please-config.json
+.release-please-manifest.json

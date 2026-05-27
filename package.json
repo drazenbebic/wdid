@@ -1,0 +1,71 @@
+{
+  "name": "@drazenbebic/wdid",
+  "version": "0.1.0",
+  "description": "What did I do? — summarize your git activity per day as a tidy table, grouped by JIRA ticket.",
+  "keywords": [
+    "git",
+    "log",
+    "cli",
+    "timesheet",
+    "toggl",
+    "standup",
+    "jira"
+  ],
+  "license": "MIT",
+  "author": "Your Name <you@example.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/your-org/wdid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/wdid/issues"
+  },
+  "homepage": "https://github.com/your-org/wdid#readme",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "wdid": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "cli-table3": "^0.6.5",
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.41",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
+    "tsup": "^8.5.1",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0",
+    "vitest": "^4.1.7"
+  }
+}
