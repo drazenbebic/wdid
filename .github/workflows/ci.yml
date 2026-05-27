@@ -40,5 +40,5 @@ jobs:
       - name: smoke-test built binary
         run: |
           node dist/index.js --help
-          node dist/index.js --version || true
-          node dist/index.js 1970-01-01
+          node dist/index.js --version
+          node dist/index.js --author "Smoke Test" 1970-01-01

@@ -27,10 +27,24 @@ export function extractTicket(message: string): string | null {
 }
 
 export async function getGitUserName(cwd: string): Promise<string> {
-  const { stdout } = await execFileAsync('git', ['config', 'user.name'], {
-    cwd,
-  });
-  return stdout.trim();
+  try {
+    const { stdout } = await execFileAsync('git', ['config', 'user.name'], {
+      cwd,
+    });
+    const name = stdout.trim();
+    if (!name) {
+      throw new Error('empty');
+    }
+    return name;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error('git is not installed or not on PATH', { cause: err });
+    }
+    throw new Error(
+      'could not read git user.name — set it with `git config user.name "Your Name"` or pass --author',
+      { cause: err },
+    );
+  }
 }
 
 export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {

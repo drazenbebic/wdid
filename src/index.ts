@@ -2,6 +2,8 @@ import { Command } from 'commander';
 import { getCommits, getGitUserName } from './git.js';
 import { renderEmpty, renderError, renderTable } from './format.js';
 
+declare const __VERSION__: string;
+
 interface CliOptions {
   from?: string;
   to?: string;
@@ -61,6 +63,7 @@ const program = new Command();
 program
   .name('wdid')
   .description('What did I do? — summarize your git commits as a table')
+  .version(__VERSION__, '-V, --version', 'output the version number')
   .argument('[date]', 'a YYYY-MM-DD date or "today"; omit to show all history')
   .option('--from <date>', 'start date (YYYY-MM-DD or "today")')
   .option('--to <date>', 'end date (YYYY-MM-DD or "today")')
