@@ -25,6 +25,18 @@ import {
   type TogglAuth,
   type TogglEntryPlan,
 } from './integrations/toggl.js';
+import {
+  FIELDS,
+  parseKey,
+  readGlobalConfig,
+  renderConfigKeys,
+  renderConfigList,
+  renderSingleValue,
+  setConfigValue,
+  getConfigValue,
+  writeGlobalConfig,
+} from './config-cli.js';
+import { globalConfigPath } from './config.js';
 
 declare const __VERSION__: string;
 
@@ -566,6 +578,123 @@ togglCmd
       process.stderr.write(renderError(message) + '\n');
       process.exitCode = 1;
     }
+  });
+
+interface ConfigGetOptions {
+  showSecrets?: boolean;
+}
+
+interface ConfigListOptions {
+  showSecrets?: boolean;
+}
+
+async function runConfigSet(key: string, value: string): Promise<void> {
+  const current = await readGlobalConfig();
+  const next = setConfigValue(current, key, value);
+  await writeGlobalConfig(next);
+
+  const { field } = parseKey(key);
+  const isSecret = FIELDS[field]?.secret ?? false;
+  process.stdout.write(
+    chalk.green(`set ${key}`) +
+      (isSecret ? chalk.dim(' (secret — value hidden)') : '') +
+      '\n',
+  );
+}
+
+async function runConfigGet(
+  key: string,
+  options: ConfigGetOptions,
+): Promise<void> {
+  const cfg = await readGlobalConfig();
+  const value = getConfigValue(cfg, key);
+  const { field } = parseKey(key);
+
+  process.stdout.write(
+    renderSingleValue(value, field, options.showSecrets ?? false) + '\n',
+  );
+
+  if (value === undefined) {
+    process.exitCode = 1;
+  }
+}
+
+async function runConfigList(options: ConfigListOptions): Promise<void> {
+  const cfg = await readGlobalConfig();
+  process.stdout.write(
+    renderConfigList(cfg, { showSecrets: options.showSecrets }) + '\n',
+  );
+}
+
+function runConfigPath(): void {
+  process.stdout.write(globalConfigPath() + '\n');
+}
+
+const configCmd = program
+  .command('config')
+  .description('Read and write the global wdid config file');
+
+configCmd
+  .command('set <key> <value>')
+  .description(
+    'Set a value in the global config (~/.config/wdid/config.json). Use dotted access for nested fields (togglProjects.ABC-).',
+  )
+  .action(async (key: string, value: string) => {
+    try {
+      await runConfigSet(key, value);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
+configCmd
+  .command('get <key>')
+  .description(
+    'Print a single config value. Secrets are masked unless --show-secrets is set.',
+  )
+  .option('--show-secrets', 'reveal secret values in full')
+  .action(async (key: string, options: ConfigGetOptions) => {
+    try {
+      await runConfigGet(key, options);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
+configCmd
+  .command('list')
+  .description(
+    'Print all configured values. Secrets are masked unless --show-secrets is set.',
+  )
+  .option('--show-secrets', 'reveal secret values in full')
+  .action(async (options: ConfigListOptions) => {
+    try {
+      await runConfigList(options);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
+configCmd
+  .command('path')
+  .description(
+    'Print the absolute path to the global config file (honors XDG_CONFIG_HOME).',
+  )
+  .action(() => {
+    runConfigPath();
+  });
+
+configCmd
+  .command('keys')
+  .description('List every config key with its type, default, and description.')
+  .action(() => {
+    process.stdout.write(renderConfigKeys() + '\n');
   });
 
 program.parseAsync(process.argv);
