@@ -9,7 +9,12 @@ describe('renderTable', () => {
   it('renders an em-dash when the commit has no ticket', () => {
     const output = stripAnsi(
       renderTable([
-        { date: '2026-05-27', ticket: null, description: 'chore: bump deps' },
+        {
+          date: '2026-05-27',
+          time: '14:30',
+          ticket: null,
+          description: 'chore: bump deps',
+        },
       ]),
     );
     expect(output).toContain('—');
@@ -21,6 +26,7 @@ describe('renderTable', () => {
       renderTable([
         {
           date: '2026-05-27',
+          time: '14:30',
           ticket: 'ABC-123',
           description: 'feat(ABC-123): add login',
         },
@@ -28,5 +34,34 @@ describe('renderTable', () => {
     );
     expect(output).toContain('ABC-123');
     expect(output).not.toContain('—');
+  });
+
+  it('renders date and time together in the date column', () => {
+    const output = stripAnsi(
+      renderTable([
+        {
+          date: '2026-05-27',
+          time: '14:30',
+          ticket: null,
+          description: 'chore: bump deps',
+        },
+      ]),
+    );
+    expect(output).toContain('2026-05-27 14:30');
+  });
+
+  it('renders just the date when time is empty', () => {
+    const output = stripAnsi(
+      renderTable([
+        {
+          date: '2026-05-27',
+          time: '',
+          ticket: null,
+          description: 'chore: bump deps',
+        },
+      ]),
+    );
+    expect(output).toContain('2026-05-27');
+    expect(output).not.toMatch(/2026-05-27\s+\d/);
   });
 });

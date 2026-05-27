@@ -2,6 +2,14 @@ import Table from 'cli-table3';
 import chalk from 'chalk';
 import type { CommitEntry } from './git.js';
 
+function renderDateCell(entry: CommitEntry): string {
+  if (!entry.time) {
+    return entry.date;
+  }
+
+  return `${entry.date} ${chalk.dim(entry.time)}`;
+}
+
 export function renderTable(entries: CommitEntry[]): string {
   const table = new Table({
     head: [
@@ -11,12 +19,12 @@ export function renderTable(entries: CommitEntry[]): string {
     ],
     style: { head: [], border: [] },
     wordWrap: true,
-    colWidths: [12, 14, 80],
+    colWidths: [18, 14, 80],
   });
 
   for (const entry of entries) {
     table.push([
-      chalk.dim(entry.date),
+      renderDateCell(entry),
       entry.ticket ? chalk.yellow(entry.ticket) : chalk.gray('—'),
       entry.description,
     ]);

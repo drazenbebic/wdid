@@ -95,7 +95,9 @@ async function run(
     allEntries.push(...entries);
   }
 
-  allEntries.sort((a, b) => b.date.localeCompare(a.date));
+  allEntries.sort((a, b) =>
+    `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`),
+  );
 
   if (allEntries.length === 0) {
     process.stdout.write(renderEmpty() + '\n');

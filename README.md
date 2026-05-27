@@ -2,7 +2,7 @@
 
 > What did I do? — a small CLI that summarizes your git activity as a tidy table, so you can fill in your timesheet without trying to remember Tuesday.
 
-`wdid` reads `git log` for your author across one or more repos and renders the output as a colorized table with **Date**, **Ticket** (JIRA-style `ABC-123`, parsed from the commit subject), and **Description**.
+`wdid` reads `git log` for your author across one or more repos and renders the output as a colorized table with **Date** (with commit time, shown in your local timezone), **Ticket** (JIRA-style `ABC-123` by default, parsed from the commit subject), and **Description**.
 
 ## Install
 
@@ -28,14 +28,16 @@ By default `wdid` uses `git config user.name` as the author and the current work
 ### Example output
 
 ```
-┌────────────┬──────────────┬──────────────────────────────────────────────────┐
-│ Date       │ Ticket       │ Description                                      │
-├────────────┼──────────────┼──────────────────────────────────────────────────┤
-│ 2026-05-27 │ ABC-123      │ feat(ABC-123): add login flow                    │
-│ 2026-05-27 │ —            │ chore: bump deps                                 │
-│ 2026-05-26 │ ABC-119      │ fix(ABC-119): handle empty payload               │
-└────────────┴──────────────┴──────────────────────────────────────────────────┘
+┌──────────────────┬──────────────┬──────────────────────────────────────────────────┐
+│ Date             │ Ticket       │ Description                                      │
+├──────────────────┼──────────────┼──────────────────────────────────────────────────┤
+│ 2026-05-27 16:42 │ ABC-123      │ feat(ABC-123): add login flow                    │
+│ 2026-05-27 11:08 │ —            │ chore: bump deps                                 │
+│ 2026-05-26 17:53 │ ABC-119      │ fix(ABC-119): handle empty payload               │
+└──────────────────┴──────────────┴──────────────────────────────────────────────────┘
 ```
+
+The time is rendered dimmed and shown in your local timezone (parsed from the committer's full ISO timestamp).
 
 If a commit doesn't reference a ticket, the Ticket column is left blank (rendered as `—`).
 

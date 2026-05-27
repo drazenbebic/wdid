@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractTicket } from './git.js';
+import { extractTicket, formatLocalDateTime } from './git.js';
 import { getTicketPattern } from './config.js';
 
 const jiraPattern = getTicketPattern('jira');
@@ -86,6 +86,30 @@ describe('extractTicket — conventional preset', () => {
     expect(
       extractTicket('just a random commit', conventionalPattern),
     ).toBeNull();
+  });
+});
+
+describe('formatLocalDateTime', () => {
+  it('returns empty strings for invalid input', () => {
+    expect(formatLocalDateTime('')).toEqual({ date: '', time: '' });
+    expect(formatLocalDateTime('not a date')).toEqual({ date: '', time: '' });
+  });
+
+  it('formats an ISO timestamp in the viewer local timezone', () => {
+    const iso = '2026-05-27T14:30:42+02:00';
+    const expectedDate = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const expected = {
+      date: `${expectedDate.getFullYear()}-${pad(expectedDate.getMonth() + 1)}-${pad(expectedDate.getDate())}`,
+      time: `${pad(expectedDate.getHours())}:${pad(expectedDate.getMinutes())}`,
+    };
+    expect(formatLocalDateTime(iso)).toEqual(expected);
+  });
+
+  it('zero-pads single-digit months, days, hours and minutes', () => {
+    const { date, time } = formatLocalDateTime('2026-01-03T05:07:00Z');
+    expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(time).toMatch(/^\d{2}:\d{2}$/);
   });
 });
 

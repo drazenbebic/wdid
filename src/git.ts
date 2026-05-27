@@ -5,6 +5,7 @@ const execFileAsync = promisify(execFile);
 
 export interface CommitEntry {
   date: string;
+  time: string;
   ticket: string | null;
   description: string;
 }
@@ -19,6 +20,24 @@ export interface GitLogOptions {
 
 const FIELD_SEP = '\x1f';
 const RECORD_SEP = '\x1e';
+
+const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+export function formatLocalDateTime(iso: string): {
+  date: string;
+  time: string;
+} {
+  const d = new Date(iso);
+
+  if (Number.isNaN(d.getTime())) {
+    return { date: '', time: '' };
+  }
+
+  const date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const time = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
+  return { date, time };
+}
 
 export function extractTicket(message: string, pattern: RegExp): string | null {
   const match = message.match(pattern);
@@ -61,7 +80,7 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     '--author-date-order',
     '--regexp-ignore-case',
     `--author=${opts.author}`,
-    `--pretty=format:%cs${FIELD_SEP}%s${RECORD_SEP}`,
+    `--pretty=format:%cI${FIELD_SEP}%s${RECORD_SEP}`,
   ];
 
   if (opts.from) {
@@ -82,10 +101,12 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     .map(r => r.trim())
     .filter(r => r.length > 0)
     .map(record => {
-      const [date = '', subject = ''] = record.split(FIELD_SEP);
+      const [iso = '', subject = ''] = record.split(FIELD_SEP);
+      const { date, time } = formatLocalDateTime(iso);
 
       return {
         date,
+        time,
         ticket: extractTicket(subject, opts.pattern),
         description: subject,
       };
