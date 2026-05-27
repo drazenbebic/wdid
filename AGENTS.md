@@ -36,6 +36,7 @@ If you ever change the package name, update it in **three** places: `package.jso
 - Ticket extraction is **configurable** via `src/config.ts` presets (`jira`, `github`, `conventional`, `custom`). The JIRA preset is the default. The first regex match wins; the first capture group is preferred, falling back to the full match for capture-group-less custom regexes.
 - The description column is the **full** commit subject, including the `(TICKET)` part — the user explicitly chose this in the scoping question.
 - `git log` is invoked with `execFile` (not `exec`) to avoid shell injection on the author argument. Don't refactor to a shell-string form.
+- `git log` is called with `--exclude=refs/stash --all`. Without the exclude, `git stash` entries show up as commits — they're authored by the user, so they pass `--author=`, and their subjects (`On <branch>: ...` / `index on <branch>: ...`) confuse both the ticket regex and per-ticket aggregation. Don't drop the exclude.
 
 ## Configuration
 
@@ -61,6 +62,11 @@ The user operates under an organization policy that prohibits personal data in r
 - **release-please pre-1.0 bump flags are confusingly named** and do opposite things:
   - `bump-minor-pre-major: true` — `BREAKING CHANGE` → minor (instead of jumping to 1.0.0). We want this on while pre-1.0.
   - `bump-patch-for-minor-pre-major: true` — `feat:` → patch (instead of the usual minor). We do NOT want this on; it makes every feat a patch bump. Don't add it back unless you genuinely want "all pre-1.0 changes are patch".
+- **Toggl integration lives in `src/integrations/toggl.ts`** (planner is pure, `fetchSyncedShas`/`pushEntries` are the network calls). Auth is `Basic base64(<token>:api_token)` — non-obvious. The CLI subcommand is `wdid toggl sync [date]` (commander nested command); `--dry-run` works even without a token (existingSyncedShas is empty, plan looks "all new").
+- **Toggl idempotency uses multi-SHA markers.** Each entry's description ends with one `(wdid <7-char-sha>)` marker per included commit, e.g. `EN-4435: a; b (wdid abc1234) (wdid def5678)`. `extractSyncedShasFromDescription` uses `matchAll` to pull them all; the planner marks a _group_ as `alreadySynced` only when _every_ SHA in the group is already known to Toggl. Don't change the marker format casually — already-synced entries on real Toggl accounts will start re-syncing.
+- **`program.enablePositionalOptions()` is load-bearing.** The root `wdid` command defines `--from` / `--to` / `--author` for the table flow; the `toggl sync` subcommand also defines them. Without `enablePositionalOptions`, commander hands options to the parent before the subcommand sees them, so `wdid toggl sync --from X --to Y` silently runs against the parent's options and the subcommand sees nothing. Don't remove the call.
+- **Toggl descriptions are condensed via `cleanSubjectForToggl`** in `src/integrations/toggl.ts`: strips the conventional-commit prefix and any redundant leading ticket reference, then the planner prepends `${ticket}: ` once for the whole group. This matches what users want to see in Toggl — `EN-4435: remove requestBody` rather than `chore(EN-4435): remove requestBody`. If you ever add a non-conventional commit style to support, extend this function rather than bypassing it.
+- **Default Toggl granularity is per-ticket** (`togglOneEntryPerTicket: true`). Commits sharing a ticket collapse into a single entry whose `durationSeconds = count × defaultDurationSeconds`. Commits without a ticket stay 1:1. Default `togglIgnoreSubjectPattern` is `\bmerge\b` (case-insensitive) to skip git's auto-generated merge commits.
 - **`customPattern` is intentional user-supplied regex.** CodeQL flags `new RegExp(customPattern)` in `src/config.ts` as a regex-injection sink — that's expected. The whole point of `format: "custom"` is to accept a user regex; escaping it would defeat the feature. The mitigation is `MAX_CUSTOM_PATTERN_LENGTH` (length-cap at both config-load and compile-time) plus the `lgtm[js/regex-injection]` suppression at the compile site. Don't remove the suppression comment or the length cap.
 - **Branch annotation in the Description column** uses `git name-rev --stdin --refs='refs/heads/*'` (one batched call per repo, not per commit) and skips `main`/`master` via `TRUNK_BRANCHES` in `src/git.ts`. The `--stdin` output format is `"<sha> (<name>)"` — don't try to switch to `--name-only --stdin` for "speed", you'll lose the sha→name mapping. `name-rev` returns suffixes like `feat/login~3` (3 commits before the tip); `normalizeBranchName` strips `~N`/`^N`. If users want to skip more "trunks" (e.g. `develop`), make `TRUNK_BRANCHES` configurable rather than enlarging the hardcoded set.
 - **`@types/node` is pinned to `^20.x`** on purpose — it must track the `engines.node` floor, not the latest Node. Bumping it (e.g. to `^25`) would silently make Node-22+/25+ APIs look type-safe, then crash at runtime on Node 20. When raising the floor, raise both together. `pnpm update --latest` doesn't know this rule, so re-pin after running it.
@@ -75,7 +81,7 @@ The user operates under an organization policy that prohibits personal data in r
 
 ## Out of scope (do not add unprompted)
 
-- Authentication-required integrations (Toggl API, JIRA API) — the user wanted this purely git-based.
+- Other API integrations beyond Toggl (JIRA, Linear, etc.). `src/integrations/` is the home for these when they happen, but each one needs its own scoping conversation.
 - HTML/Markdown export. `--json` is supported (for piping to `jq` and scripts), but additional formatters haven't been asked for.
 - Per-repo config files. CLI flags are the configuration surface.
 

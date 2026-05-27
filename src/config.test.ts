@@ -138,4 +138,42 @@ describe('validateConfig', () => {
   it('rejects non-string ticketColumnLabel', () => {
     expect(() => validateConfig({ ticketColumnLabel: 42 })).toThrow(/string/);
   });
+
+  it('accepts a full Toggl config block', () => {
+    const cfg = {
+      togglApiToken: 'tok',
+      togglWorkspaceId: 12345,
+      togglProjects: { 'ABC-': 100, 'DEF-': 200 },
+      togglDefaultProjectId: 999,
+      togglDefaultDurationMinutes: 30,
+      togglDayStartHour: 9,
+    };
+    expect(validateConfig(cfg)).toEqual(cfg);
+  });
+
+  it('rejects non-integer togglWorkspaceId', () => {
+    expect(() => validateConfig({ togglWorkspaceId: 'oops' })).toThrow(
+      /positive integer/,
+    );
+    expect(() => validateConfig({ togglWorkspaceId: 0 })).toThrow(
+      /positive integer/,
+    );
+  });
+
+  it('rejects togglProjects with non-integer project IDs', () => {
+    expect(() => validateConfig({ togglProjects: { 'ABC-': 'oops' } })).toThrow(
+      /positive integer/,
+    );
+  });
+
+  it('rejects togglProjects passed as an array', () => {
+    expect(() => validateConfig({ togglProjects: [100, 200] })).toThrow(
+      /object/,
+    );
+  });
+
+  it('rejects togglDayStartHour outside 0–23', () => {
+    expect(() => validateConfig({ togglDayStartHour: 24 })).toThrow(/0 and 23/);
+    expect(() => validateConfig({ togglDayStartHour: -1 })).toThrow(/0 and 23/);
+  });
 });

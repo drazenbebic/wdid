@@ -15,6 +15,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: null,
@@ -31,6 +32,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: 'ABC-123',
@@ -47,6 +49,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: null,
@@ -63,6 +66,7 @@ describe('renderTable', () => {
       renderTable(
         [
           {
+            sha: 'abc1234',
             date: '2026-05-27',
             time: '14:30',
             ticket: 'feat(auth)',
@@ -81,6 +85,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: 'ABC-123',
@@ -96,6 +101,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '',
           ticket: null,
@@ -112,6 +118,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: 'ABC-123',
@@ -128,6 +135,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTableGroupedByDay([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '17:44',
           ticket: null,
@@ -135,6 +143,7 @@ describe('renderTable', () => {
           branch: null,
         },
         {
+          sha: 'def5678',
           date: '2026-05-27',
           time: '17:40',
           ticket: null,
@@ -142,6 +151,7 @@ describe('renderTable', () => {
           branch: null,
         },
         {
+          sha: 'ghi9012',
           date: '2026-05-26',
           time: '11:08',
           ticket: null,
@@ -163,6 +173,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTableGroupedByDay([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '17:44',
           ticket: null,
@@ -170,6 +181,7 @@ describe('renderTable', () => {
           branch: null,
         },
         {
+          sha: 'def5678',
           date: '2026-05-27',
           time: '17:40',
           ticket: null,
@@ -177,6 +189,7 @@ describe('renderTable', () => {
           branch: null,
         },
         {
+          sha: 'ghi9012',
           date: '2026-05-27',
           time: '17:36',
           ticket: null,
@@ -193,6 +206,7 @@ describe('renderTable', () => {
   it('renders a parseable JSON array of entries', () => {
     const entries = [
       {
+        sha: 'abc1234',
         date: '2026-05-27',
         time: '14:30',
         ticket: 'ABC-123',
@@ -200,6 +214,7 @@ describe('renderTable', () => {
         branch: 'feat/login',
       },
       {
+        sha: 'def5678',
         date: '2026-05-27',
         time: '11:08',
         ticket: null,
@@ -219,6 +234,7 @@ describe('renderTable', () => {
     const json = renderJson(
       [
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: 'feat(auth)',
@@ -245,6 +261,7 @@ describe('renderTable', () => {
     const output = stripAnsi(
       renderTable([
         {
+          sha: 'abc1234',
           date: '2026-05-27',
           time: '14:30',
           ticket: null,

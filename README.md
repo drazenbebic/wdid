@@ -113,6 +113,57 @@ CLI flags always win. The first match in this list is used in full (configs do n
 
 The column header is picked automatically based on the active format. To override it for a specific preset (e.g. call them "Tasks" instead of "Ticket"), set `ticketColumnLabel` in your config.
 
+## Toggl integration
+
+`wdid toggl sync [date]` pushes the day's commits to Toggl as time entries. By default, commits with the same ticket are **collapsed into a single entry** (duration scales with commit count) and commits whose subject matches `\bmerge\b` are skipped. Entries stack from a configurable day-start hour — you adjust the exact times in Toggl yourself. The sync is **idempotent**: each entry's description carries one `(wdid <short-sha>)` marker per included commit, and re-running skips commits already pushed.
+
+Descriptions are condensed for Toggl: the conventional-commit prefix (`feat:`, `chore(ABC-123):`, `fix!:`, etc.) is stripped, and the ticket — if any — is prepended once. So `chore(EN-4435): remove requestBody` becomes `EN-4435: remove requestBody`. Aggregated entries look like `EN-4435: subject A; subject B; subject C`.
+
+```sh
+wdid toggl sync                                      # push today
+wdid toggl sync 2026-05-27                           # push a specific day
+wdid toggl sync today --dry-run                      # preview without pushing
+wdid toggl sync --workspace 12345 today              # override the configured workspace
+wdid toggl sync --from 2026-05-25 --to 2026-05-27    # push a multi-day range (inclusive)
+```
+
+`--from` and `--to` are inclusive and mutually exclusive with the positional `[date]`. Each day is planned independently (its own 09:00 start, its own dedup fetch). On a per-day failure (Toggl 500, missing project, etc.), the sync continues through the remaining days and exits non-zero with a summary so one bad day doesn't strand the rest. The range is capped at 366 days as a guardrail.
+
+### Toggl config
+
+Add these alongside the other config fields:
+
+```json
+{
+  "togglApiToken": "your-api-token",
+  "togglWorkspaceId": 12345,
+  "togglProjects": {
+    "ABC-": 67890,
+    "DEF-": 67891
+  },
+  "togglDefaultProjectId": 99999,
+  "togglDefaultDurationMinutes": 30,
+  "togglDayStartHour": 9,
+  "togglOneEntryPerTicket": true,
+  "togglIgnoreSubjectPattern": "\\bmerge\\b"
+}
+```
+
+| Field                         | Type                     | Description                                                                                                 |
+| ----------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `togglApiToken`               | `string`                 | Toggl API token (find it in Toggl → Profile → API Token). Prefer the `TOGGL_API_TOKEN` env var.             |
+| `togglWorkspaceId`            | `number`                 | Numeric Toggl workspace ID. Required to push.                                                               |
+| `togglProjects`               | `Record<string, number>` | Map of ticket-prefix → project ID. Longest matching prefix wins.                                            |
+| `togglDefaultProjectId`       | `number`                 | Project ID for commits that don't match any prefix (or have no ticket).                                     |
+| `togglDefaultDurationMinutes` | `number`                 | Per-commit duration. Default `30`. In per-ticket mode, an entry's total duration is `count × this`.         |
+| `togglDayStartHour`           | `number` (0–23)          | Hour to start stacking entries at. Default `9` (09:00).                                                     |
+| `togglOneEntryPerTicket`      | `boolean`                | When `true` (default), commits sharing a ticket collapse into one entry. Commits without a ticket stay 1:1. |
+| `togglIgnoreSubjectPattern`   | `string` (regex)         | Subjects matching this pattern (case-insensitive) are skipped. Default `\bmerge\b`. Set to `""` to disable. |
+
+### Auth
+
+The API token is resolved in this order: `TOGGL_API_TOKEN` env var > `togglApiToken` in config. The env var path is preferred so you don't have to commit (or remember not to commit) the token.
+
 ## Development
 
 This project uses [pnpm](https://pnpm.io) (see the `packageManager` field in `package.json`).
