@@ -1,4 +1,17 @@
-# wdid
+<div align="center">
+    <picture>
+        <source
+            srcset="./logos/wdid_logo_white_transparent.png"
+            media="(prefers-color-scheme: dark)"
+            width="820" height="332"
+        />
+        <img
+            src="./logos/wdid_logo_black_transparent.png"
+            alt="What did I do Logo"
+            width="820" height="332"
+        />
+    </picture>
+</div>
 
 > What did I do? — a small CLI that summarizes your git activity as a tidy table, so you can fill in your timesheet without trying to remember Tuesday.
 
@@ -163,6 +176,29 @@ Add these alongside the other config fields:
 ### Auth
 
 The API token is resolved in this order: `TOGGL_API_TOKEN` env var > `togglApiToken` in config. The env var path is preferred so you don't have to commit (or remember not to commit) the token.
+
+## Managing config
+
+`wdid config` provides four subcommands for the **global** config (`~/.config/wdid/config.json` — honors `XDG_CONFIG_HOME`). Repo-level configs are read but not written by these commands; edit them by hand.
+
+```sh
+wdid config set togglApiToken tok_…                # set a scalar field
+wdid config set togglWorkspaceId 12345             # numbers are parsed
+wdid config set togglOneEntryPerTicket false       # booleans take "true"/"false"
+wdid config set togglProjects.ABC- 67890           # set a nested record entry
+wdid config get togglApiToken                      # secrets are masked
+wdid config get togglApiToken --show-secrets       # …unless --show-secrets
+wdid config list                                   # all set fields, aligned, secrets masked
+wdid config list --show-secrets                    # reveal secrets
+wdid config path                                   # absolute path to the config file
+```
+
+Notes:
+
+- **Validation runs at `set` time** — `wdid config set togglDayStartHour 99` fails immediately with the schema error, the file is never touched.
+- **Secrets are masked** in `list` / `get` output (`tok_…wa9e0d` style) unless `--show-secrets` is set.
+- **`defaultRepos` is not settable from the CLI** (it's an array). Same for any future array-shaped field. Use `vim $(wdid config path)` to edit those.
+- **To remove a key**, edit the file directly — `unset` isn't included in this slice.
 
 ## Development
 

@@ -284,7 +284,7 @@ export function validateConfig(raw: unknown): WdidConfig {
   return cfg;
 }
 
-function globalConfigPath(): string {
+export function globalConfigPath(): string {
   const xdgConfigHome =
     process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config');
 
