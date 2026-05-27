@@ -61,6 +61,7 @@ The user operates under an organization policy that prohibits personal data in r
 - **release-please pre-1.0 bump flags are confusingly named** and do opposite things:
   - `bump-minor-pre-major: true` — `BREAKING CHANGE` → minor (instead of jumping to 1.0.0). We want this on while pre-1.0.
   - `bump-patch-for-minor-pre-major: true` — `feat:` → patch (instead of the usual minor). We do NOT want this on; it makes every feat a patch bump. Don't add it back unless you genuinely want "all pre-1.0 changes are patch".
+- **Toggl integration lives in `src/integrations/toggl.ts`** (planner is pure, `fetchSyncedShas`/`pushEntries` are the network calls). Auth is `Basic base64(<token>:api_token)` — non-obvious. Idempotency: descriptions include a `(wdid <7-char-sha>)` marker; `fetchSyncedShas` reads `/me/time_entries` for the date range, extracts those markers via regex, and the planner sets `alreadySynced` per entry. Don't change the marker format casually — already-synced entries on real Toggl accounts will start re-syncing. The CLI subcommand is `wdid toggl sync [date]` (commander nested command); `--dry-run` works even without a token (existingSyncedShas is empty, plan looks "all new").
 - **`customPattern` is intentional user-supplied regex.** CodeQL flags `new RegExp(customPattern)` in `src/config.ts` as a regex-injection sink — that's expected. The whole point of `format: "custom"` is to accept a user regex; escaping it would defeat the feature. The mitigation is `MAX_CUSTOM_PATTERN_LENGTH` (length-cap at both config-load and compile-time) plus the `lgtm[js/regex-injection]` suppression at the compile site. Don't remove the suppression comment or the length cap.
 - **Branch annotation in the Description column** uses `git name-rev --stdin --refs='refs/heads/*'` (one batched call per repo, not per commit) and skips `main`/`master` via `TRUNK_BRANCHES` in `src/git.ts`. The `--stdin` output format is `"<sha> (<name>)"` — don't try to switch to `--name-only --stdin` for "speed", you'll lose the sha→name mapping. `name-rev` returns suffixes like `feat/login~3` (3 commits before the tip); `normalizeBranchName` strips `~N`/`^N`. If users want to skip more "trunks" (e.g. `develop`), make `TRUNK_BRANCHES` configurable rather than enlarging the hardcoded set.
 - **`@types/node` is pinned to `^20.x`** on purpose — it must track the `engines.node` floor, not the latest Node. Bumping it (e.g. to `^25`) would silently make Node-22+/25+ APIs look type-safe, then crash at runtime on Node 20. When raising the floor, raise both together. `pnpm update --latest` doesn't know this rule, so re-pin after running it.
@@ -75,7 +76,7 @@ The user operates under an organization policy that prohibits personal data in r
 
 ## Out of scope (do not add unprompted)
 
-- Authentication-required integrations (Toggl API, JIRA API) — the user wanted this purely git-based.
+- Other API integrations beyond Toggl (JIRA, Linear, etc.). `src/integrations/` is the home for these when they happen, but each one needs its own scoping conversation.
 - HTML/Markdown export. `--json` is supported (for piping to `jq` and scripts), but additional formatters haven't been asked for.
 - Per-repo config files. CLI flags are the configuration surface.
 

@@ -93,6 +93,7 @@ export function renderJson(
 ): string {
   const key = toJsonKey(ticketColumnLabel);
   const transformed = entries.map(e => ({
+    sha: e.sha,
     date: e.date,
     time: e.time,
     [key]: e.ticket,

@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 
 export interface CommitEntry {
+  sha: string;
   date: string;
   time: string;
   ticket: string | null;
@@ -154,28 +155,32 @@ export async function assertGitRepo(cwd: string): Promise<void> {
   }
 }
 
+const GIT_USER_NAME_HINT =
+  'could not read git user.name — set it with `git config user.name "Your Name"` or pass --author';
+
 export async function getGitUserName(cwd: string): Promise<string> {
+  let stdout: string;
+
   try {
-    const { stdout } = await execFileAsync('git', ['config', 'user.name'], {
+    const result = await execFileAsync('git', ['config', 'user.name'], {
       cwd,
     });
-    const name = stdout.trim();
-
-    if (!name) {
-      throw new Error('empty');
-    }
-
-    return name;
+    stdout = result.stdout;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       throw new Error('git is not installed or not on PATH', { cause: err });
     }
 
-    throw new Error(
-      'could not read git user.name — set it with `git config user.name "Your Name"` or pass --author',
-      { cause: err },
-    );
+    throw new Error(GIT_USER_NAME_HINT, { cause: err });
   }
+
+  const name = stdout.trim();
+
+  if (!name) {
+    throw new Error(GIT_USER_NAME_HINT);
+  }
+
+  return name;
 }
 
 export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
@@ -247,6 +252,7 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
   );
 
   return parsed.map(p => ({
+    sha: p.sha,
     date: p.date,
     time: p.time,
     ticket: p.ticket,

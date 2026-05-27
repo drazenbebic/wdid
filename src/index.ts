@@ -13,8 +13,17 @@ import {
   getColumnLabel,
   getTicketPattern,
   loadConfig,
+  TOGGL_DEFAULTS,
   type TicketFormat,
+  type WdidConfig,
 } from './config.js';
+import {
+  fetchSyncedShas,
+  planEntries,
+  pushEntries,
+  type TogglAuth,
+  type TogglEntryPlan,
+} from './integrations/toggl.js';
 
 declare const __VERSION__: string;
 
@@ -161,6 +170,179 @@ async function run(
   process.stdout.write(rendered + '\n');
 }
 
+interface TogglSyncCliOptions {
+  dryRun?: boolean;
+  workspace?: string;
+  repo?: string[];
+  author?: string;
+}
+
+function resolveTogglAuth(config: WdidConfig): TogglAuth | null {
+  const token = process.env.TOGGL_API_TOKEN ?? config.togglApiToken;
+
+  if (!token) {
+    return null;
+  }
+
+  return { apiToken: token };
+}
+
+function formatHHMM(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderTogglPlan(
+  plan: TogglEntryPlan[],
+  date: string,
+  durationSeconds: number,
+): string {
+  const newCount = plan.filter(p => !p.alreadySynced).length;
+  const skipCount = plan.length - newCount;
+  const lines: string[] = [];
+
+  lines.push(
+    chalk.bold(`Toggl sync — ${date}`) +
+      chalk.dim(
+        `  (${newCount} new, ${skipCount} already synced, ${plan.length} total)`,
+      ),
+  );
+  lines.push('');
+
+  for (const entry of plan) {
+    const start = formatHHMM(entry.start);
+    const endIso = new Date(
+      new Date(entry.start).getTime() + durationSeconds * 1000,
+    ).toISOString();
+    const end = formatHHMM(endIso);
+    const status = entry.alreadySynced
+      ? chalk.gray('skip')
+      : chalk.green('new ');
+    const project =
+      entry.projectId === null
+        ? chalk.yellow('(no project)')
+        : chalk.cyan(
+            `[project ${entry.projectId}${entry.matchedTicketPrefix ? ` ← ${entry.matchedTicketPrefix}` : ' (default)'}]`,
+          );
+
+    lines.push(
+      `  ${status}  ${chalk.dim(`${start}–${end}`)}  ${entry.description}  ${project}`,
+    );
+  }
+
+  return lines.join('\n');
+}
+
+async function runTogglSync(
+  dateArg: string | undefined,
+  options: TogglSyncCliOptions,
+): Promise<void> {
+  const config = await loadConfig(process.cwd());
+
+  const date = resolveDate(dateArg ?? 'today');
+  const workspaceId =
+    (options.workspace
+      ? Number.parseInt(options.workspace, 10)
+      : config.togglWorkspaceId) ?? null;
+
+  if (!options.dryRun && workspaceId === null) {
+    throw new Error(
+      'togglWorkspaceId is not set — add it to your config or pass --workspace <id>',
+    );
+  }
+
+  const auth = resolveTogglAuth(config);
+
+  if (!options.dryRun && !auth) {
+    throw new Error(
+      'no Toggl API token — set TOGGL_API_TOKEN or `togglApiToken` in your config',
+    );
+  }
+
+  const format: TicketFormat = config.format ?? 'jira';
+  const pattern = getTicketPattern(format, config.customPattern);
+
+  const configRepos = config.defaultRepos?.map(expandPath) ?? [];
+  const repos =
+    options.repo && options.repo.length > 0
+      ? options.repo
+      : configRepos.length > 0
+        ? configRepos
+        : [process.cwd()];
+
+  const perRepoCommits = await Promise.all(
+    repos.map(async cwd => {
+      const author =
+        options.author ?? config.defaultAuthor ?? (await getGitUserName(cwd));
+
+      return getCommits({ author, from: date, to: date, cwd, pattern });
+    }),
+  );
+  const commits = perRepoCommits.flat();
+
+  const existingSyncedShas = auth
+    ? await fetchSyncedShas(auth, date)
+    : new Set<string>();
+
+  const defaultDurationMinutes =
+    config.togglDefaultDurationMinutes ?? TOGGL_DEFAULTS.durationMinutes;
+  const dayStartHour = config.togglDayStartHour ?? TOGGL_DEFAULTS.dayStartHour;
+
+  const plan = planEntries(commits, {
+    date,
+    defaultDurationMinutes,
+    dayStartHour,
+    projects: config.togglProjects ?? {},
+    defaultProjectId: config.togglDefaultProjectId,
+    existingSyncedShas,
+  });
+
+  if (plan.length === 0) {
+    process.stdout.write(chalk.gray(`No commits to sync for ${date}.`) + '\n');
+
+    return;
+  }
+
+  process.stdout.write(
+    renderTogglPlan(plan, date, defaultDurationMinutes * 60) + '\n',
+  );
+
+  if (options.dryRun) {
+    process.stdout.write('\n' + chalk.dim('(dry-run — nothing pushed)') + '\n');
+
+    return;
+  }
+
+  if (!auth || workspaceId === null) {
+    // Should be unreachable given checks above, but TS doesn't know that.
+    throw new Error('internal: auth/workspaceId resolved to null');
+  }
+
+  const result = await pushEntries(auth, workspaceId, plan);
+
+  process.stdout.write(
+    '\n' +
+      chalk.bold(`Pushed ${result.pushed}, skipped ${result.skipped}`) +
+      (result.failures.length > 0
+        ? chalk.red(`, ${result.failures.length} failed`)
+        : '') +
+      '\n',
+  );
+
+  for (const failure of result.failures) {
+    process.stderr.write(
+      chalk.red(`  failed: ${failure.plan.shortSha} — ${failure.reason}`) +
+        '\n',
+    );
+  }
+
+  if (result.failures.length > 0) {
+    process.exitCode = 1;
+  }
+}
+
 const program = new Command();
 
 program
@@ -206,6 +388,38 @@ program
 
     try {
       await run(dateArg, options);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
+const togglCmd = program
+  .command('toggl')
+  .description('Toggl integration commands');
+
+togglCmd
+  .command('sync [date]')
+  .description(
+    "push the day's commits as Toggl time entries (one per commit). Default: today.",
+  )
+  .option('--dry-run', 'preview the plan without pushing')
+  .option(
+    '--workspace <id>',
+    'override the configured togglWorkspaceId for this run',
+  )
+  .option(
+    '--repo <path...>',
+    'one or more repo paths to query (overrides defaultRepos in config)',
+  )
+  .option(
+    '--author <name>',
+    'override the git author (defaults to git config user.name, then defaultAuthor in config)',
+  )
+  .action(async (dateArg: string | undefined, options: TogglSyncCliOptions) => {
+    try {
+      await runTogglSync(dateArg, options);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       process.stderr.write(renderError(message) + '\n');

@@ -11,7 +11,18 @@ export interface WdidConfig {
   defaultAuthor?: string;
   defaultRepos?: string[];
   ticketColumnLabel?: string;
+  togglApiToken?: string;
+  togglWorkspaceId?: number;
+  togglProjects?: Record<string, number>;
+  togglDefaultProjectId?: number;
+  togglDefaultDurationMinutes?: number;
+  togglDayStartHour?: number;
 }
+
+export const TOGGL_DEFAULTS = {
+  durationMinutes: 30,
+  dayStartHour: 9,
+} as const;
 
 export const DEFAULT_COLUMN_LABELS: Record<TicketFormat, string> = {
   jira: 'Ticket',
@@ -159,6 +170,89 @@ export function validateConfig(raw: unknown): WdidConfig {
     }
 
     cfg.ticketColumnLabel = obj.ticketColumnLabel;
+  }
+
+  if ('togglApiToken' in obj) {
+    if (typeof obj.togglApiToken !== 'string') {
+      throw new Error('togglApiToken must be a string');
+    }
+
+    cfg.togglApiToken = obj.togglApiToken;
+  }
+
+  if ('togglWorkspaceId' in obj) {
+    if (
+      typeof obj.togglWorkspaceId !== 'number' ||
+      !Number.isInteger(obj.togglWorkspaceId) ||
+      obj.togglWorkspaceId < 1
+    ) {
+      throw new Error('togglWorkspaceId must be a positive integer');
+    }
+
+    cfg.togglWorkspaceId = obj.togglWorkspaceId;
+  }
+
+  if ('togglProjects' in obj) {
+    const raw = obj.togglProjects;
+
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new Error(
+        'togglProjects must be an object mapping ticket prefix → project ID',
+      );
+    }
+
+    const map: Record<string, number> = {};
+    for (const [prefix, projectId] of Object.entries(raw)) {
+      if (
+        typeof projectId !== 'number' ||
+        !Number.isInteger(projectId) ||
+        projectId < 1
+      ) {
+        throw new Error(
+          `togglProjects["${prefix}"] must be a positive integer`,
+        );
+      }
+
+      map[prefix] = projectId;
+    }
+    cfg.togglProjects = map;
+  }
+
+  if ('togglDefaultProjectId' in obj) {
+    if (
+      typeof obj.togglDefaultProjectId !== 'number' ||
+      !Number.isInteger(obj.togglDefaultProjectId) ||
+      obj.togglDefaultProjectId < 1
+    ) {
+      throw new Error('togglDefaultProjectId must be a positive integer');
+    }
+
+    cfg.togglDefaultProjectId = obj.togglDefaultProjectId;
+  }
+
+  if ('togglDefaultDurationMinutes' in obj) {
+    if (
+      typeof obj.togglDefaultDurationMinutes !== 'number' ||
+      !Number.isInteger(obj.togglDefaultDurationMinutes) ||
+      obj.togglDefaultDurationMinutes < 1
+    ) {
+      throw new Error('togglDefaultDurationMinutes must be a positive integer');
+    }
+
+    cfg.togglDefaultDurationMinutes = obj.togglDefaultDurationMinutes;
+  }
+
+  if ('togglDayStartHour' in obj) {
+    if (
+      typeof obj.togglDayStartHour !== 'number' ||
+      !Number.isInteger(obj.togglDayStartHour) ||
+      obj.togglDayStartHour < 0 ||
+      obj.togglDayStartHour > 23
+    ) {
+      throw new Error('togglDayStartHour must be an integer between 0 and 23');
+    }
+
+    cfg.togglDayStartHour = obj.togglDayStartHour;
   }
 
   return cfg;

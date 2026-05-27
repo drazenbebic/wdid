@@ -113,6 +113,48 @@ CLI flags always win. The first match in this list is used in full (configs do n
 
 The column header is picked automatically based on the active format. To override it for a specific preset (e.g. call them "Tasks" instead of "Ticket"), set `ticketColumnLabel` in your config.
 
+## Toggl integration
+
+`wdid toggl sync [date]` pushes the day's commits to Toggl as one time entry per commit. Entries stack from a configurable day-start hour, each `togglDefaultDurationMinutes` long — you adjust the exact times in Toggl yourself. The sync is **idempotent**: each entry's description carries a `(wdid <short-sha>)` marker, and re-running skips commits already pushed.
+
+```sh
+wdid toggl sync                  # push today
+wdid toggl sync 2026-05-27       # push a specific day
+wdid toggl sync today --dry-run  # preview without pushing
+wdid toggl sync --workspace 12345 today  # override the configured workspace
+```
+
+### Toggl config
+
+Add these alongside the other config fields:
+
+```json
+{
+  "togglApiToken": "your-api-token",
+  "togglWorkspaceId": 12345,
+  "togglProjects": {
+    "ABC-": 67890,
+    "DEF-": 67891
+  },
+  "togglDefaultProjectId": 99999,
+  "togglDefaultDurationMinutes": 30,
+  "togglDayStartHour": 9
+}
+```
+
+| Field                         | Type                     | Description                                                                                     |
+| ----------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `togglApiToken`               | `string`                 | Toggl API token (find it in Toggl → Profile → API Token). Prefer the `TOGGL_API_TOKEN` env var. |
+| `togglWorkspaceId`            | `number`                 | Numeric Toggl workspace ID. Required to push.                                                   |
+| `togglProjects`               | `Record<string, number>` | Map of ticket-prefix → project ID. Longest matching prefix wins.                                |
+| `togglDefaultProjectId`       | `number`                 | Project ID for commits that don't match any prefix (or have no ticket).                         |
+| `togglDefaultDurationMinutes` | `number`                 | Per-entry duration. Default `30`.                                                               |
+| `togglDayStartHour`           | `number` (0–23)          | Hour to start stacking entries at. Default `9` (09:00).                                         |
+
+### Auth
+
+The API token is resolved in this order: `TOGGL_API_TOKEN` env var > `togglApiToken` in config. The env var path is preferred so you don't have to commit (or remember not to commit) the token.
+
 ## Development
 
 This project uses [pnpm](https://pnpm.io) (see the `packageManager` field in `package.json`).
