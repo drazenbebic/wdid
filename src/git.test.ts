@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
+  assertGitRepo,
   extractTicket,
   formatLocalDateTime,
   normalizeBranchName,
@@ -114,6 +118,23 @@ describe('formatLocalDateTime', () => {
     const { date, time } = formatLocalDateTime('2026-01-03T05:07:00Z');
     expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(time).toMatch(/^\d{2}:\d{2}$/);
+  });
+});
+
+describe('assertGitRepo', () => {
+  it('resolves when inside a git repository', async () => {
+    await expect(assertGitRepo(process.cwd())).resolves.toBeUndefined();
+  });
+
+  it('throws a clean error when not inside a git repository', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'wdid-test-'));
+    try {
+      await expect(assertGitRepo(dir)).rejects.toThrow(
+        /not inside a git repository/,
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -136,6 +136,23 @@ export async function getBranchMap(
   return map;
 }
 
+export async function assertGitRepo(cwd: string): Promise<void> {
+  try {
+    await execFileAsync('git', ['rev-parse', '--is-inside-work-tree'], {
+      cwd,
+    });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error('git is not installed or not on PATH', { cause: err });
+    }
+
+    throw new Error(
+      `not inside a git repository: ${cwd} — cd into a repo or pass --repo <path>`,
+      { cause: err },
+    );
+  }
+}
+
 export async function getGitUserName(cwd: string): Promise<string> {
   try {
     const { stdout } = await execFileAsync('git', ['config', 'user.name'], {
@@ -161,6 +178,8 @@ export async function getGitUserName(cwd: string): Promise<string> {
 }
 
 export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
+  await assertGitRepo(opts.cwd);
+
   const args = [
     'log',
     '--all',
@@ -178,10 +197,27 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     args.push(`--before=${opts.to} 23:59`);
   }
 
-  const { stdout } = await execFileAsync('git', args, {
-    cwd: opts.cwd,
-    maxBuffer: 32 * 1024 * 1024,
-  });
+  let stdout: string;
+  try {
+    const result = await execFileAsync('git', args, {
+      cwd: opts.cwd,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    stdout = result.stdout;
+  } catch (err) {
+    const stderr = String((err as { stderr?: string }).stderr ?? '');
+
+    // Empty repo (no commits yet) — return an empty list rather than erroring.
+    if (
+      stderr.includes('does not have any commits') ||
+      stderr.includes('bad default revision') ||
+      stderr.includes('unknown revision')
+    ) {
+      return [];
+    }
+
+    throw err;
+  }
 
   const parsed = stdout
     .split(RECORD_SEP)
