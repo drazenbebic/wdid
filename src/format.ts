@@ -83,6 +83,26 @@ export function renderTableGroupedByDay(
   return table.toString();
 }
 
+export function toJsonKey(label: string): string {
+  return label.toLowerCase().replace(/\s+/g, '_');
+}
+
+export function renderJson(
+  entries: CommitEntry[],
+  ticketColumnLabel = 'Ticket',
+): string {
+  const key = toJsonKey(ticketColumnLabel);
+  const transformed = entries.map(e => ({
+    date: e.date,
+    time: e.time,
+    [key]: e.ticket,
+    description: e.description,
+    branch: e.branch,
+  }));
+
+  return JSON.stringify(transformed, null, 2);
+}
+
 export function renderEmpty(): string {
   return chalk.gray('No commits found for the given filters.');
 }

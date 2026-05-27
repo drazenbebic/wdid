@@ -72,6 +72,7 @@ With `--group-by-day`, the date moves into a section heading instead of repeatin
 | `--no-color`               | Disable colored output. Also honored via the `NO_COLOR` env var.                             |
 | `--limit <N>`              | Cap the table to the most recent `N` rows. Positive integer.                                 |
 | `--group-by-day`           | Group rows under a bold date heading per day; the row only shows the time.                   |
+| `--json`                   | Emit a JSON array of commit entries to stdout instead of the table. Empty result is `[]`.    |
 
 ## Configuration
 

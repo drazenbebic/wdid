@@ -4,6 +4,7 @@ import { getCommits, getGitUserName } from './git.js';
 import {
   renderEmpty,
   renderError,
+  renderJson,
   renderTable,
   renderTableGroupedByDay,
 } from './format.js';
@@ -27,6 +28,7 @@ interface CliOptions {
   color?: boolean;
   limit?: string;
   groupByDay?: boolean;
+  json?: boolean;
 }
 
 function parseLimit(raw: string | undefined): number | undefined {
@@ -139,6 +141,13 @@ async function run(
   );
 
   const display = limit !== undefined ? allEntries.slice(0, limit) : allEntries;
+  const ticketColumnLabel = getColumnLabel(format, config.ticketColumnLabel);
+
+  if (options.json) {
+    process.stdout.write(renderJson(display, ticketColumnLabel) + '\n');
+
+    return;
+  }
 
   if (display.length === 0) {
     process.stdout.write(renderEmpty() + '\n');
@@ -146,7 +155,6 @@ async function run(
     return;
   }
 
-  const ticketColumnLabel = getColumnLabel(format, config.ticketColumnLabel);
   const rendered = options.groupByDay
     ? renderTableGroupedByDay(display, ticketColumnLabel)
     : renderTable(display, ticketColumnLabel);
@@ -190,6 +198,7 @@ program
     '--group-by-day',
     'group rows under a bold date heading per day (time-only in row)',
   )
+  .option('--json', 'emit a JSON array of commit entries instead of the table')
   .action(async (dateArg: string | undefined, options: CliOptions) => {
     if (shouldDisableColor(options)) {
       chalk.level = 0;

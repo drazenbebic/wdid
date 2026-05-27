@@ -107,7 +107,7 @@ The user operates under an organization policy that prohibits personal data in r
 ## Out of scope (do not add unprompted)
 
 - Authentication-required integrations (Toggl API, JIRA API) — the user wanted this purely git-based.
-- HTML/Markdown export, JSON output flag, or other formatters beyond the table.
+- HTML/Markdown export. `--json` is supported (for piping to `jq` and scripts), but additional formatters haven't been asked for.
 - Per-repo config files. CLI flags are the configuration surface.
 
 ## How to update this file
