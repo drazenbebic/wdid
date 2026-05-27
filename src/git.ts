@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -8,6 +8,7 @@ export interface CommitEntry {
   time: string;
   ticket: string | null;
   description: string;
+  branch: string | null;
 }
 
 export interface GitLogOptions {
@@ -20,6 +21,8 @@ export interface GitLogOptions {
 
 const FIELD_SEP = '\x1f';
 const RECORD_SEP = '\x1e';
+
+const TRUNK_BRANCHES = new Set(['main', 'master']);
 
 const pad2 = (n: number): string => String(n).padStart(2, '0');
 
@@ -47,6 +50,90 @@ export function extractTicket(message: string, pattern: RegExp): string | null {
   }
 
   return match[1] ?? match[0];
+}
+
+export function normalizeBranchName(rawName: string): string | null {
+  const clean = rawName.replace(/[~^].*$/, '').trim();
+
+  if (!clean || clean === 'undefined' || TRUNK_BRANCHES.has(clean)) {
+    return null;
+  }
+
+  return clean;
+}
+
+async function runGitWithStdin(
+  cwd: string,
+  args: string[],
+  input: string,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('git', args, { cwd });
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', chunk => {
+      stdout += chunk.toString();
+    });
+    proc.stderr.on('data', chunk => {
+      stderr += chunk.toString();
+    });
+    proc.on('error', reject);
+    proc.on('close', code => {
+      if (code !== 0) {
+        reject(new Error(`git ${args.join(' ')} failed: ${stderr.trim()}`));
+
+        return;
+      }
+
+      resolve(stdout);
+    });
+
+    proc.stdin.write(input);
+    proc.stdin.end();
+  });
+}
+
+export async function getBranchMap(
+  cwd: string,
+  shas: string[],
+): Promise<Map<string, string | null>> {
+  const map = new Map<string, string | null>();
+
+  if (shas.length === 0) {
+    return map;
+  }
+
+  let stdout: string;
+  try {
+    stdout = await runGitWithStdin(
+      cwd,
+      ['name-rev', '--stdin', '--refs=refs/heads/*'],
+      shas.join('\n') + '\n',
+    );
+  } catch {
+    // If name-rev fails (e.g. detached HEAD with no matching refs), just skip annotations.
+    return map;
+  }
+
+  for (const line of stdout.split('\n')) {
+    const m = line.match(/^([0-9a-fA-F]+)\s+\((.+)\)\s*$/);
+
+    if (!m) {
+      continue;
+    }
+
+    const sha = m[1];
+    const rawName = m[2];
+
+    if (!sha || !rawName) {
+      continue;
+    }
+
+    map.set(sha, normalizeBranchName(rawName));
+  }
+
+  return map;
 }
 
 export async function getGitUserName(cwd: string): Promise<string> {
@@ -80,7 +167,7 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     '--author-date-order',
     '--regexp-ignore-case',
     `--author=${opts.author}`,
-    `--pretty=format:%cI${FIELD_SEP}%s${RECORD_SEP}`,
+    `--pretty=format:%H${FIELD_SEP}%cI${FIELD_SEP}%s${RECORD_SEP}`,
   ];
 
   if (opts.from) {
@@ -96,19 +183,33 @@ export async function getCommits(opts: GitLogOptions): Promise<CommitEntry[]> {
     maxBuffer: 32 * 1024 * 1024,
   });
 
-  return stdout
+  const parsed = stdout
     .split(RECORD_SEP)
     .map(r => r.trim())
     .filter(r => r.length > 0)
     .map(record => {
-      const [iso = '', subject = ''] = record.split(FIELD_SEP);
+      const [sha = '', iso = '', subject = ''] = record.split(FIELD_SEP);
       const { date, time } = formatLocalDateTime(iso);
 
       return {
+        sha,
         date,
         time,
         ticket: extractTicket(subject, opts.pattern),
         description: subject,
       };
     });
+
+  const branchMap = await getBranchMap(
+    opts.cwd,
+    parsed.map(p => p.sha).filter(s => s.length > 0),
+  );
+
+  return parsed.map(p => ({
+    date: p.date,
+    time: p.time,
+    ticket: p.ticket,
+    description: p.description,
+    branch: branchMap.get(p.sha) ?? null,
+  }));
 }

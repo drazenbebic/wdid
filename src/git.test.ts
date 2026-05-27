@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { extractTicket, formatLocalDateTime } from './git.js';
+import {
+  extractTicket,
+  formatLocalDateTime,
+  normalizeBranchName,
+} from './git.js';
 import { getTicketPattern } from './config.js';
 
 const jiraPattern = getTicketPattern('jira');
@@ -110,6 +114,35 @@ describe('formatLocalDateTime', () => {
     const { date, time } = formatLocalDateTime('2026-01-03T05:07:00Z');
     expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(time).toMatch(/^\d{2}:\d{2}$/);
+  });
+});
+
+describe('normalizeBranchName', () => {
+  it('returns null for trunk branches', () => {
+    expect(normalizeBranchName('main')).toBeNull();
+    expect(normalizeBranchName('master')).toBeNull();
+  });
+
+  it('returns null for undefined (name-rev placeholder)', () => {
+    expect(normalizeBranchName('undefined')).toBeNull();
+  });
+
+  it('returns null for empty input', () => {
+    expect(normalizeBranchName('')).toBeNull();
+    expect(normalizeBranchName('   ')).toBeNull();
+  });
+
+  it('strips name-rev offset suffixes', () => {
+    expect(normalizeBranchName('feat/login~3')).toBe('feat/login');
+    expect(normalizeBranchName('feat/login^1')).toBe('feat/login');
+    expect(normalizeBranchName('feat/login~3^1')).toBe('feat/login');
+  });
+
+  it('returns descriptive branch names unchanged', () => {
+    expect(normalizeBranchName('feat/login-flow')).toBe('feat/login-flow');
+    expect(normalizeBranchName('hotfix/api-timeout')).toBe(
+      'hotfix/api-timeout',
+    );
   });
 });
 

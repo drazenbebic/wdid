@@ -10,6 +10,14 @@ function renderDateCell(entry: CommitEntry): string {
   return `${entry.date} ${chalk.dim(entry.time)}`;
 }
 
+function renderDescriptionCell(entry: CommitEntry): string {
+  if (!entry.branch) {
+    return entry.description;
+  }
+
+  return `${entry.description} ${chalk.magenta(`[${entry.branch}]`)}`;
+}
+
 export function renderTable(
   entries: CommitEntry[],
   ticketColumnLabel = 'Ticket',
@@ -29,7 +37,7 @@ export function renderTable(
     table.push([
       renderDateCell(entry),
       entry.ticket ? chalk.yellow(entry.ticket) : chalk.gray('—'),
-      entry.description,
+      renderDescriptionCell(entry),
     ]);
   }
 
