@@ -13,6 +13,16 @@
     </picture>
 </div>
 
+<div align="center">
+
+[![npm version](https://img.shields.io/npm/v/@drazenbebic/wdid.svg)](https://www.npmjs.com/package/@drazenbebic/wdid)
+[![CI](https://github.com/drazenbebic/wdid/actions/workflows/ci.yml/badge.svg)](https://github.com/drazenbebic/wdid/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node](https://img.shields.io/node/v/@drazenbebic/wdid.svg)](https://www.npmjs.com/package/@drazenbebic/wdid)
+[![Follow @drazenbebic](https://img.shields.io/twitter/follow/drazenbebic?style=social)](https://twitter.com/drazenbebic)
+
+</div>
+
 > What did I do? — a small CLI that summarizes your git activity as a tidy table, so you can fill in your timesheet without trying to remember Tuesday.
 
 `wdid` reads `git log` for your author across one or more repos and renders the output as a colorized table with **Date** (with commit time, shown in your local timezone), **Ticket** (JIRA-style `ABC-123` by default, parsed from the commit subject), and **Description**.
