@@ -144,7 +144,7 @@ wdid git sync --workspace 12345 today              # override the configured wor
 wdid git sync --from 2026-05-25 --to 2026-05-27    # push a multi-day range (inclusive)
 ```
 
-`--from` and `--to` are inclusive and mutually exclusive with the positional `[date]`. Each day is planned independently (its own 09:00 start, its own dedup fetch). On a per-day failure (Toggl 500, missing project, etc.), the sync continues through the remaining days and exits non-zero with a summary so one bad day doesn't strand the rest. The range is capped at 366 days as a guardrail.
+`--from` and `--to` are inclusive and mutually exclusive with the positional `[date]`. Each day is planned independently (its own stack start from `togglDayStartHour` — default 09:00 — and its own dedup fetch). On a per-day failure (Toggl 500, missing project, etc.), the sync continues through the remaining days and exits non-zero with a summary so one bad day doesn't strand the rest. The range is capped at 366 days as a guardrail.
 
 ### Toggl config
 
