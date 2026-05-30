@@ -1,6 +1,6 @@
 import Table from 'cli-table3';
 import chalk from 'chalk';
-import type { CommitEntry } from './git.js';
+import type { CommitEntry } from './sources/git.js';
 
 function renderDateCell(entry: CommitEntry): string {
   if (!entry.time) {

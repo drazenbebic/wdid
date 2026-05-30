@@ -130,18 +130,18 @@ CLI flags always win. The first match in this list is used in full (configs do n
 
 The column header is picked automatically based on the active format. To override it for a specific preset (e.g. call them "Tasks" instead of "Ticket"), set `ticketColumnLabel` in your config.
 
-## Toggl integration
+## Git → Toggl sync
 
-`wdid toggl sync [date]` pushes the day's commits to Toggl as time entries. By default, commits with the same ticket are **collapsed into a single entry** (duration scales with commit count) and commits whose subject matches `\bmerge\b` are skipped. Entries stack from a configurable day-start hour — you adjust the exact times in Toggl yourself. The sync is **idempotent**: each entry's description carries one `(wdid <short-sha>)` marker per included commit, and re-running skips commits already pushed.
+`wdid git sync [date]` pushes the day's git commits to Toggl as time entries. By default, commits with the same ticket are **collapsed into a single entry** (duration scales with commit count) and commits whose subject matches `\bmerge\b` are skipped. Entries stack from a configurable day-start hour — you adjust the exact times in Toggl yourself. The sync is **idempotent**: each entry's description carries one `(wdid <short-sha>)` marker per included commit, and re-running skips commits already pushed.
 
 Descriptions are condensed for Toggl: the conventional-commit prefix (`feat:`, `chore(ABC-123):`, `fix!:`, etc.) is stripped, and the ticket — if any — is prepended once. So `chore(EN-4435): remove requestBody` becomes `EN-4435: remove requestBody`. Aggregated entries look like `EN-4435: subject A; subject B; subject C`.
 
 ```sh
-wdid toggl sync                                      # push today
-wdid toggl sync 2026-05-27                           # push a specific day
-wdid toggl sync today --dry-run                      # preview without pushing
-wdid toggl sync --workspace 12345 today              # override the configured workspace
-wdid toggl sync --from 2026-05-25 --to 2026-05-27    # push a multi-day range (inclusive)
+wdid git sync                                      # push today
+wdid git sync 2026-05-27                           # push a specific day
+wdid git sync today --dry-run                      # preview without pushing
+wdid git sync --workspace 12345 today              # override the configured workspace
+wdid git sync --from 2026-05-25 --to 2026-05-27    # push a multi-day range (inclusive)
 ```
 
 `--from` and `--to` are inclusive and mutually exclusive with the positional `[date]`. Each day is planned independently (its own 09:00 start, its own dedup fetch). On a per-day failure (Toggl 500, missing project, etc.), the sync continues through the remaining days and exits non-zero with a summary so one bad day doesn't strand the rest. The range is capped at 366 days as a guardrail.

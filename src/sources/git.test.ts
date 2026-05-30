@@ -8,7 +8,7 @@ import {
   formatLocalDateTime,
   normalizeBranchName,
 } from './git.js';
-import { getTicketPattern } from './config.js';
+import { getTicketPattern } from '../config.js';
 
 const jiraPattern = getTicketPattern('jira');
 const githubPattern = getTicketPattern('github');

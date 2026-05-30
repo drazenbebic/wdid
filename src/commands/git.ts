@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import type { Command } from 'commander';
-import { getCommits, getGitUserName } from '../git.js';
+import { getCommits, getGitUserName } from '../sources/git.js';
 import { renderError } from '../format.js';
 import {
   expandPath,
@@ -17,7 +17,7 @@ import {
   pushEntries,
   type TogglAuth,
   type TogglEntryPlan,
-} from '../integrations/toggl.js';
+} from '../destinations/toggl.js';
 import { resolveDate } from '../utils/date.js';
 
 interface TogglSyncCliOptions {
@@ -195,8 +195,8 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
     return result;
   }
 
-  // runTogglSync already rejects when dryRun=false and auth/workspaceId are
-  // missing, so this only narrows types — a real fire is a logic bug and
+  // runGitSync's caller already rejects when dryRun=false and auth/workspaceId
+  // are missing, so this only narrows types — a real fire is a logic bug and
   // should propagate, not be folded into the per-day failure path.
   if (!ctx.auth || ctx.workspaceId === null) {
     throw new Error(
@@ -237,7 +237,7 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
   return result;
 }
 
-async function runTogglSync(
+async function runGitSync(
   dateArg: string | undefined,
   options: TogglSyncCliOptions,
 ): Promise<void> {
@@ -337,27 +337,27 @@ async function runTogglSync(
   }
 }
 
-export function registerTogglCommand(program: Command): void {
-  const togglCmd = program
-    .command('toggl')
-    .description('Toggl integration commands')
+export function registerGitCommand(program: Command): void {
+  const gitCmd = program
+    .command('git')
+    .description('Sync git commits to Toggl as time entries')
     .action(() => {
-      togglCmd.help();
+      gitCmd.help();
     });
 
-  togglCmd.addHelpText(
+  gitCmd.addHelpText(
     'after',
     `
 Examples:
-  $ wdid toggl sync                                  push today's commits
-  $ wdid toggl sync yesterday                        push yesterday's commits
-  $ wdid toggl sync 2026-05-27                       push a specific day
-  $ wdid toggl sync today --dry-run                  preview without pushing
-  $ wdid toggl sync --workspace 12345 today          override the workspace
-  $ wdid toggl sync --from 2026-05-25 --to 2026-05-27  push a multi-day range`,
+  $ wdid git sync                                  push today's commits
+  $ wdid git sync yesterday                        push yesterday's commits
+  $ wdid git sync 2026-05-27                       push a specific day
+  $ wdid git sync today --dry-run                  preview without pushing
+  $ wdid git sync --workspace 12345 today          override the workspace
+  $ wdid git sync --from 2026-05-25 --to 2026-05-27  push a multi-day range`,
   );
 
-  togglCmd
+  gitCmd
     .command('sync [date]')
     .description(
       "push the day's commits as Toggl time entries. Default: today. Pass --from/--to for a range.",
@@ -386,7 +386,7 @@ Examples:
     .action(
       async (dateArg: string | undefined, options: TogglSyncCliOptions) => {
         try {
-          await runTogglSync(dateArg, options);
+          await runGitSync(dateArg, options);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           process.stderr.write(renderError(message) + '\n');

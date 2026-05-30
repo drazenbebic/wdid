@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import { banner } from './utils/banner.js';
 import { registerDefaultCommand } from './commands/default.js';
-import { registerTogglCommand } from './commands/toggl.js';
+import { registerGitCommand } from './commands/git.js';
 import { registerConfigCommand } from './commands/config.js';
 
 declare const __VERSION__: string;
@@ -16,7 +16,7 @@ program
   .addHelpText('before', banner);
 
 registerDefaultCommand(program);
-registerTogglCommand(program);
+registerGitCommand(program);
 registerConfigCommand(program);
 
 program.addHelpText(
@@ -29,7 +29,7 @@ Examples:
   $ wdid 2026-05                            commits from a whole month
   $ wdid --from 2026-05-01 --to 2026-05-07  a date range
   $ wdid --all                              all history, no filter
-  $ wdid toggl sync today                   push today's commits to Toggl
+  $ wdid git sync today                     push today's commits to Toggl
   $ wdid config list                        show global config`,
 );
 

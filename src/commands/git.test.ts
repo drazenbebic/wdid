@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resolveTogglAuth, resolveTogglSyncDates } from './toggl.js';
+import { resolveTogglAuth, resolveTogglSyncDates } from './git.js';
 
 describe('resolveTogglSyncDates', () => {
   beforeEach(() => {

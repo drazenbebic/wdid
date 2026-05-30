@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CommitEntry } from '../git.js';
+import type { CommitEntry } from '../sources/git.js';
 import {
   cleanSubjectForToggl,
   enumerateDates,

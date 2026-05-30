@@ -1,4 +1,4 @@
-import type { CommitEntry } from '../git.js';
+import type { CommitEntry } from '../sources/git.js';
 
 const TOGGL_API_BASE = 'https://api.track.toggl.com/api/v9';
 

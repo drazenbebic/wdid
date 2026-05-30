@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import type { Command } from 'commander';
-import { getCommits, getGitUserName } from '../git.js';
+import { getCommits, getGitUserName } from '../sources/git.js';
 import {
   renderEmpty,
   renderError,
