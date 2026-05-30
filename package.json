@@ -12,7 +12,11 @@
     "jira"
   ],
   "license": "MIT",
-  "author": "Your Name <you@example.com>",
+  "author": {
+    "name": "Drazen Bebic",
+    "email": "drazen.bebic@outlook.com",
+    "url": "https://www.bebic.dev"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/drazenbebic/wdid.git"
