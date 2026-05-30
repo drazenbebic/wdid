@@ -195,7 +195,11 @@ wdid gcal sync --from 2026-05-25 --to 2026-05-27     # push a multi-day range
 wdid gcal logout                                     # clear the stored refresh token
 ```
 
-The first run of `wdid gcal auth` opens your browser to Google's consent screen. If you're outside Moonshiner you'll need to either receive the bundled wdid build with credentials, or set up your own Google Cloud OAuth client and configure `gcalClientId` / `gcalClientSecret`.
+The first run of `wdid gcal auth` opens your browser to Google's consent screen.
+
+**Heads up: you will see an "This app isn't verified" warning.** That's expected — wdid is a small personal project, not put through Google's app-verification process. Click **Advanced** → **Go to wdid (unsafe)** to proceed. The "unsafe" wording is Google's default for any unverified app; your data still only goes to Google and (when you sync) Toggl.
+
+If you're running wdid from source or a fork without the bundled credentials baked in, set up your own Google Cloud OAuth client (Console → APIs & Services → enable Calendar API → OAuth consent screen → Desktop OAuth client) and configure `gcalClientId` / `gcalClientSecret` via `wdid config set`.
 
 ### Calendar config
 
@@ -229,7 +233,7 @@ The individual `wdid git sync` and `wdid gcal sync` commands stay around — the
 
 ## Managing config
 
-`wdid config` provides four subcommands for the **global** config (`~/.config/wdid/config.json` — honors `XDG_CONFIG_HOME`). Repo-level configs are read but not written by these commands; edit them by hand.
+`wdid config` provides six subcommands for the **global** config (`~/.config/wdid/config.json` — honors `XDG_CONFIG_HOME`): `set`, `get`, `list`, `path`, `keys`, and `repo` (with its own `add` / `remove` / `list`). Repo-level configs are read but not written by these commands; edit them by hand.
 
 ```sh
 wdid config set togglApiToken tok_…                # set a scalar field
