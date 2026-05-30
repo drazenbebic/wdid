@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.1](https://github.com/drazenbebic/wdid/compare/v0.5.0...v0.5.1) (2026-05-30)
+
+
+### Bug Fixes
+
+* **ci:** fail build when CI lacks bundled OAuth credentials ([8663062](https://github.com/drazenbebic/wdid/commit/8663062bdc1569daddcbf49cec60f8265d3c8bb8))
+
+
+### Documentation
+
+* clarify configurable day-start hour in Toggl sync description ([0246022](https://github.com/drazenbebic/wdid/commit/024602244b17c697b1472c48fec52508d0f3f4c6))
+
 ## [0.5.0](https://github.com/drazenbebic/wdid/compare/v0.4.0...v0.5.0) (2026-05-30)
 
 
