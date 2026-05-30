@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/drazenbebic/wdid/compare/v0.3.0...v0.4.0) (2026-05-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* rework help UX and add date shortcuts
+
+### Features
+
+* add `wdid yesterday` command ([9eaf15a](https://github.com/drazenbebic/wdid/commit/9eaf15a301bad2c8403fb64cd84d0ba8d2a57a66))
+* add `wdid YYYY-MM` command ([d371933](https://github.com/drazenbebic/wdid/commit/d371933f69e86d3cc01dd84cec5422b115a66d76))
+* add isometric gradient banner to --help ([a387ebe](https://github.com/drazenbebic/wdid/commit/a387ebe785629ab693a74efe6e386a00ba63b38b))
+* rework help UX and add date shortcuts ([e2a120d](https://github.com/drazenbebic/wdid/commit/e2a120d4ca1def16c179bb41fe34821d44ea3a51))
+
 ## [0.3.0](https://github.com/drazenbebic/wdid/compare/v0.2.0...v0.3.0) (2026-05-27)
 
 
