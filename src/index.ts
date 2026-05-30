@@ -3,6 +3,7 @@ import { banner } from './utils/banner.js';
 import { registerDefaultCommand } from './commands/default.js';
 import { registerGitCommand } from './commands/git.js';
 import { registerGcalCommand } from './commands/gcal.js';
+import { registerSyncCommand } from './commands/sync.js';
 import { registerConfigCommand } from './commands/config.js';
 
 declare const __VERSION__: string;
@@ -19,6 +20,7 @@ program
 registerDefaultCommand(program);
 registerGitCommand(program);
 registerGcalCommand(program);
+registerSyncCommand(program);
 registerConfigCommand(program);
 
 program.addHelpText(
@@ -31,8 +33,9 @@ Examples:
   $ wdid 2026-05                            commits from a whole month
   $ wdid --from 2026-05-01 --to 2026-05-07  a date range
   $ wdid --all                              all history, no filter
-  $ wdid git sync today                     push today's commits to Toggl
-  $ wdid gcal sync today                    push today's meetings to Toggl
+  $ wdid sync today                         push today's meetings + commits to Toggl
+  $ wdid git sync today                     push today's commits only
+  $ wdid gcal sync today                    push today's meetings only
   $ wdid config list                        show global config`,
 );
 

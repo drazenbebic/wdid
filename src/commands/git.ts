@@ -20,7 +20,7 @@ import {
 } from '../destinations/toggl.js';
 import { resolveDate } from '../utils/date.js';
 
-interface TogglSyncCliOptions {
+export interface TogglSyncCliOptions {
   dryRun?: boolean;
   workspace?: string;
   repo?: string[];
@@ -237,7 +237,7 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
   return result;
 }
 
-async function runGitSync(
+export async function runGitSync(
   dateArg: string | undefined,
   options: TogglSyncCliOptions,
 ): Promise<void> {

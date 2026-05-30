@@ -211,6 +211,22 @@ The first run of `wdid gcal auth` opens your browser to Google's consent screen.
 | `gcalProjects`           | `Record<string, number>` | Map of title-regex → Toggl project ID. First match wins (iteration is config-declaration order).                     |
 | `gcalDefaultProjectId`   | `number`                 | Project ID for events that don't match any `gcalProjects` pattern.                                                   |
 
+## Syncing everything at once
+
+`wdid sync [date]` runs gcal sync then git sync against the same date range — one command for "log everything I did today."
+
+```sh
+wdid sync today                      # meetings + commits
+wdid sync yesterday --dry-run        # preview yesterday without pushing
+wdid sync today --no-git             # only sync meetings
+wdid sync today --no-gcal            # only sync commits
+wdid sync --from 2026-05-25 --to 2026-05-27   # multi-day range
+```
+
+gcal runs first so meeting times anchor the day's entries. If gcal isn't configured (no refresh token), it's skipped with a notice and git still runs — `wdid sync` works fine for users who haven't run `wdid gcal auth` yet. Failures in one source don't strand the other; the exit code is non-zero if either source had any push failures.
+
+The individual `wdid git sync` and `wdid gcal sync` commands stay around — they're the right tool when you want absolute granularity or are debugging one source.
+
 ## Managing config
 
 `wdid config` provides four subcommands for the **global** config (`~/.config/wdid/config.json` — honors `XDG_CONFIG_HOME`). Repo-level configs are read but not written by these commands; edit them by hand.

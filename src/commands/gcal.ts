@@ -18,7 +18,7 @@ import {
 } from '../oauth/google.js';
 import { resolveDate } from '../utils/date.js';
 
-interface GcalSyncCliOptions {
+export interface GcalSyncCliOptions {
   dryRun?: boolean;
   workspace?: string;
   from?: string;
@@ -173,7 +173,7 @@ function renderGcalPlan(plan: TogglEntryPlan[], date: string): string {
   return lines.join('\n');
 }
 
-async function runGcalSync(
+export async function runGcalSync(
   dateArg: string | undefined,
   options: GcalSyncCliOptions,
 ): Promise<void> {
