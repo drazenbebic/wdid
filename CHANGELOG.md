@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.5.0](https://github.com/drazenbebic/wdid/compare/v0.4.0...v0.5.0) (2026-05-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* `wdid toggl sync` is now `wdid git sync`.
+
+### Features
+
+* add `wdid config repos add/remove/list` commands for managing defaultRepos ([e95fa28](https://github.com/drazenbebic/wdid/commit/e95fa285de270558e3b926cede41dfa3965ef258))
+* add `wdid gcal sync` for Google Calendar → Toggl sync ([00412bc](https://github.com/drazenbebic/wdid/commit/00412bcfb58cf7d19ea0a5e970ee293c575f2d01))
+* add `wdid sync` umbrella command ([464f488](https://github.com/drazenbebic/wdid/commit/464f488eed0fd590cd7398b277f43f40d004f4b2))
+
+
+### Performance
+
+* **docs:** shrink readme logos by 68% via palette quantization ([fa4e113](https://github.com/drazenbebic/wdid/commit/fa4e1138758d496e48811dcf97626f5a7145b1f0))
+
+
+### Refactors
+
+* reorganize into sources/destinations; rename `toggl` → `git` ([ed70ad2](https://github.com/drazenbebic/wdid/commit/ed70ad28fa9943d2eaeeb195699686646abc0659))
+* split index.ts into commands/ and utils/ ([3a2a875](https://github.com/drazenbebic/wdid/commit/3a2a875b36d9f1cacd2e8f40aafaae43098a634d))
+
+
+### Documentation
+
+* drop stale Moonshiner reference; document the unverified-app warning ([7820a61](https://github.com/drazenbebic/wdid/commit/7820a612b54328d9d9767ef71c272d3d45520fdc))
+
 ## [0.4.0](https://github.com/drazenbebic/wdid/compare/v0.3.0...v0.4.0) (2026-05-30)
 
 
