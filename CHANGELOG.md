@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.2](https://github.com/drazenbebic/wdid/compare/v0.5.1...v0.5.2) (2026-05-30)
+
+
+### Documentation
+
+* add status badges to README ([7087bcd](https://github.com/drazenbebic/wdid/commit/7087bcd728129bb6753ffc46e1b19b65ae88e60b))
+* **skill:** co-locate the Claude Code skill with the tool ([a39e907](https://github.com/drazenbebic/wdid/commit/a39e90773e9060563295eabbb0ef10ae62636535))
+
 ## [0.5.1](https://github.com/drazenbebic/wdid/compare/v0.5.0...v0.5.1) (2026-05-30)
 
 
