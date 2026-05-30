@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { globalConfigPath, validateConfig, type WdidConfig } from './config.js';
 import Table from 'cli-table3';
 import chalk from 'chalk';
@@ -365,6 +365,76 @@ export function renderSingleValue(
   const spec = FIELDS[field];
 
   return formatValue(value, spec?.secret ?? false, reveal);
+}
+
+export function normalizeRepoPath(
+  rawPath: string,
+  cwd: string,
+  home: string,
+): string {
+  if (rawPath === '~' || rawPath.startsWith('~/')) {
+    return rawPath;
+  }
+
+  // Resolve relative paths against cwd; absolute paths pass through.
+  const abs = resolve(cwd, rawPath);
+
+  // Re-tildify paths under HOME so shell-expanded inputs (`~/foo` → /Users/me/foo)
+  // canonicalize back to the tilde form and dedup correctly against literal-tilde
+  // entries already in the config.
+  if (abs === home) {
+    return '~';
+  }
+
+  if (abs.startsWith(home + '/')) {
+    return '~/' + abs.slice(home.length + 1);
+  }
+
+  return abs;
+}
+
+export function addRepo(
+  cfg: WdidConfig,
+  rawPath: string,
+  cwd: string,
+  home: string,
+): WdidConfig {
+  const normalized = normalizeRepoPath(rawPath, cwd, home);
+  const existing = cfg.defaultRepos ?? [];
+
+  if (existing.includes(normalized)) {
+    throw new Error(`"${normalized}" is already in defaultRepos`);
+  }
+
+  return validateConfig({
+    ...cfg,
+    defaultRepos: [...existing, normalized],
+  }) as WdidConfig;
+}
+
+export function removeRepo(
+  cfg: WdidConfig,
+  rawPath: string,
+  cwd: string,
+  home: string,
+): WdidConfig {
+  const normalized = normalizeRepoPath(rawPath, cwd, home);
+  const existing = cfg.defaultRepos ?? [];
+
+  if (!existing.includes(normalized)) {
+    throw new Error(`"${normalized}" is not in defaultRepos`);
+  }
+
+  const filtered = existing.filter(p => p !== normalized);
+  const next: WdidConfig = { ...cfg };
+
+  if (filtered.length === 0) {
+    delete next.defaultRepos;
+  } else {
+    next.defaultRepos = filtered;
+  }
+
+  return validateConfig(next) as WdidConfig;
 }
 
 export async function readGlobalConfig(): Promise<WdidConfig> {

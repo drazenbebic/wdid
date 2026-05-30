@@ -3,12 +3,15 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  addRepo,
   FIELDS,
   getConfigValue,
   maskSecret,
+  normalizeRepoPath,
   parseKey,
   parseValue,
   readGlobalConfig,
+  removeRepo,
   renderConfigList,
   renderSingleValue,
   setConfigValue,
@@ -268,5 +271,134 @@ describe('readGlobalConfig / writeGlobalConfig — round trip in temp dir', () =
       'utf-8',
     );
     expect(JSON.parse(written)).toEqual({ togglWorkspaceId: 1 });
+  });
+});
+
+describe('normalizeRepoPath', () => {
+  const HOME = '/home/me';
+
+  it('preserves tilde-prefixed paths verbatim', () => {
+    expect(normalizeRepoPath('~/work/api', '/anywhere', HOME)).toBe(
+      '~/work/api',
+    );
+    expect(normalizeRepoPath('~', '/anywhere', HOME)).toBe('~');
+  });
+
+  it('resolves relative paths against the given cwd', () => {
+    expect(normalizeRepoPath('./api', '/opt/projects', HOME)).toBe(
+      '/opt/projects/api',
+    );
+    expect(normalizeRepoPath('api', '/opt/projects', HOME)).toBe(
+      '/opt/projects/api',
+    );
+  });
+
+  it('passes absolute paths outside HOME through unchanged', () => {
+    expect(normalizeRepoPath('/opt/api', '/anywhere', HOME)).toBe('/opt/api');
+  });
+
+  it('re-tildifies absolute paths under HOME', () => {
+    expect(normalizeRepoPath('/home/me/work/api', '/anywhere', HOME)).toBe(
+      '~/work/api',
+    );
+    expect(normalizeRepoPath('/home/me', '/anywhere', HOME)).toBe('~');
+  });
+
+  it('does not match paths that merely share a HOME prefix', () => {
+    // /home/melissa is not under /home/me
+    expect(normalizeRepoPath('/home/melissa/api', '/anywhere', HOME)).toBe(
+      '/home/melissa/api',
+    );
+  });
+});
+
+describe('addRepo', () => {
+  const HOME = '/home/me';
+
+  it('appends to an empty config', () => {
+    const next = addRepo({}, '~/work/api', '/anywhere', HOME);
+    expect(next.defaultRepos).toEqual(['~/work/api']);
+  });
+
+  it('appends to an existing array without dropping entries', () => {
+    const next = addRepo(
+      { defaultRepos: ['~/work/api'] },
+      '~/work/web',
+      '/anywhere',
+      HOME,
+    );
+    expect(next.defaultRepos).toEqual(['~/work/api', '~/work/web']);
+  });
+
+  it('rejects literal duplicates', () => {
+    expect(() =>
+      addRepo(
+        { defaultRepos: ['~/work/api'] },
+        '~/work/api',
+        '/anywhere',
+        HOME,
+      ),
+    ).toThrow(/already in defaultRepos/);
+  });
+
+  it('rejects shell-expanded duplicates of a tilde-stored entry', () => {
+    expect(() =>
+      addRepo(
+        { defaultRepos: ['~/work/api'] },
+        '/home/me/work/api',
+        '/anywhere',
+        HOME,
+      ),
+    ).toThrow(/already in defaultRepos/);
+  });
+
+  it('stores under-HOME absolute inputs as their tilde form', () => {
+    const next = addRepo({}, '/home/me/work/api', '/anywhere', HOME);
+    expect(next.defaultRepos).toEqual(['~/work/api']);
+  });
+});
+
+describe('removeRepo', () => {
+  const HOME = '/home/me';
+
+  it('removes the matching entry', () => {
+    const next = removeRepo(
+      { defaultRepos: ['~/work/api', '~/work/web'] },
+      '~/work/api',
+      '/anywhere',
+      HOME,
+    );
+    expect(next.defaultRepos).toEqual(['~/work/web']);
+  });
+
+  it('drops the key entirely when the array becomes empty', () => {
+    const next = removeRepo(
+      { defaultRepos: ['~/work/api'] },
+      '~/work/api',
+      '/anywhere',
+      HOME,
+    );
+    expect(next.defaultRepos).toBeUndefined();
+  });
+
+  it('matches a tilde-stored entry by its shell-expanded form', () => {
+    const next = removeRepo(
+      { defaultRepos: ['~/work/api'] },
+      '/home/me/work/api',
+      '/anywhere',
+      HOME,
+    );
+    expect(next.defaultRepos).toBeUndefined();
+  });
+
+  it('errors when the path is not in the array', () => {
+    expect(() =>
+      removeRepo(
+        { defaultRepos: ['~/work/api'] },
+        '~/work/web',
+        '/anywhere',
+        HOME,
+      ),
+    ).toThrow(/not in defaultRepos/);
   });
 });

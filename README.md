@@ -195,13 +195,16 @@ wdid config get togglApiToken --show-secrets       # …unless --show-secrets
 wdid config list                                   # all set fields, aligned, secrets masked
 wdid config list --show-secrets                    # reveal secrets
 wdid config path                                   # absolute path to the config file
+wdid config repo add ~/work/api                    # append to defaultRepos
+wdid config repo remove ~/work/api                 # remove from defaultRepos
+wdid config repo list                              # show configured repo paths
 ```
 
 Notes:
 
 - **Validation runs at `set` time** — `wdid config set togglDayStartHour 99` fails immediately with the schema error, the file is never touched.
 - **Secrets are masked** in `list` / `get` output (`tok_…wa9e0d` style) unless `--show-secrets` is set.
-- **`defaultRepos` is not settable from the CLI** (it's an array). Same for any future array-shaped field. Use `vim $(wdid config path)` to edit those.
+- **`defaultRepos` has its own subcommands.** `wdid config set` only handles scalars; use `wdid config repo add <path>` / `remove <path>` / `list`. Paths under `$HOME` are stored in their `~/…` form for portability, and `add` rejects non-existent paths.
 - **To remove a key**, edit the file directly — `unset` isn't included in this slice.
 
 ## Development

@@ -26,9 +26,12 @@ import {
   type TogglEntryPlan,
 } from './integrations/toggl.js';
 import {
+  addRepo,
   FIELDS,
+  normalizeRepoPath,
   parseKey,
   readGlobalConfig,
+  removeRepo,
   renderConfigKeys,
   renderConfigList,
   renderSingleValue,
@@ -37,6 +40,8 @@ import {
   writeGlobalConfig,
 } from './config-cli.js';
 import { globalConfigPath } from './config.js';
+import { stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 
 declare const __VERSION__: string;
 
@@ -334,6 +339,8 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
     failures: 0,
   };
 
+  let plan: TogglEntryPlan[];
+
   try {
     const perRepoCommits = await Promise.all(
       ctx.repos.map(async cwd => {
@@ -355,7 +362,7 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
       ? await fetchSyncedShas(ctx.auth, date)
       : new Set<string>();
 
-    const plan = planEntries(commits, {
+    plan = planEntries(commits, {
       date,
       defaultDurationMinutes: ctx.defaultDurationMinutes,
       dayStartHour: ctx.dayStartHour,
@@ -365,27 +372,38 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
       oneEntryPerTicket: ctx.oneEntryPerTicket,
       ignoreSubjectPattern: ctx.ignoreSubjectPattern,
     });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    result.error = message;
+    process.stderr.write(chalk.red(`  ${date}: ${message}`) + '\n');
 
-    result.planned = plan.length;
+    return result;
+  }
 
-    if (plan.length === 0) {
-      process.stdout.write(
-        chalk.gray(`No commits to sync for ${date}.`) + '\n',
-      );
+  result.planned = plan.length;
 
-      return result;
-    }
+  if (plan.length === 0) {
+    process.stdout.write(chalk.gray(`No commits to sync for ${date}.`) + '\n');
 
-    process.stdout.write(renderTogglPlan(plan, date) + '\n');
+    return result;
+  }
 
-    if (ctx.dryRun) {
-      return result;
-    }
+  process.stdout.write(renderTogglPlan(plan, date) + '\n');
 
-    if (!ctx.auth || ctx.workspaceId === null) {
-      throw new Error('internal: auth/workspaceId resolved to null');
-    }
+  if (ctx.dryRun) {
+    return result;
+  }
 
+  // runTogglSync already rejects when dryRun=false and auth/workspaceId are
+  // missing, so this only narrows types — a real fire is a logic bug and
+  // should propagate, not be folded into the per-day failure path.
+  if (!ctx.auth || ctx.workspaceId === null) {
+    throw new Error(
+      'internal: auth/workspaceId resolved to null with dryRun=false',
+    );
+  }
+
+  try {
     const pushResult = await pushEntries(ctx.auth, ctx.workspaceId, plan);
     result.pushed = pushResult.pushed;
     result.skipped = pushResult.skipped;
@@ -726,6 +744,60 @@ function runConfigPath(): void {
   process.stdout.write(globalConfigPath() + '\n');
 }
 
+async function assertRepoExists(rawPath: string): Promise<void> {
+  const stored = normalizeRepoPath(rawPath, process.cwd(), homedir());
+  // expandPath turns "~/foo" into "/home/.../foo" for the stat call only;
+  // we keep the tilde form in storage so the config stays portable.
+  const onDisk = expandPath(stored);
+
+  const stats = await stat(onDisk).catch((err: NodeJS.ErrnoException) => {
+    if (err.code === 'ENOENT') {
+      throw new Error(`"${stored}" does not exist on disk`, { cause: err });
+    }
+
+    throw err;
+  });
+
+  if (!stats.isDirectory()) {
+    throw new Error(`"${stored}" exists but is not a directory`);
+  }
+}
+
+async function runConfigRepoAdd(rawPath: string): Promise<void> {
+  await assertRepoExists(rawPath);
+  const current = await readGlobalConfig();
+  const next = addRepo(current, rawPath, process.cwd(), homedir());
+  await writeGlobalConfig(next);
+  const stored = normalizeRepoPath(rawPath, process.cwd(), homedir());
+  process.stdout.write(chalk.green(`added ${stored} to defaultRepos`) + '\n');
+}
+
+async function runConfigRepoRemove(rawPath: string): Promise<void> {
+  const current = await readGlobalConfig();
+  const next = removeRepo(current, rawPath, process.cwd(), homedir());
+  await writeGlobalConfig(next);
+  const stored = normalizeRepoPath(rawPath, process.cwd(), homedir());
+  process.stdout.write(
+    chalk.green(`removed ${stored} from defaultRepos`) + '\n',
+  );
+}
+
+async function runConfigRepoList(): Promise<void> {
+  const cfg = await readGlobalConfig();
+  const repos = cfg.defaultRepos ?? [];
+
+  if (repos.length === 0) {
+    process.stdout.write(chalk.gray('(no default repos configured)') + '\n');
+    process.exitCode = 1;
+
+    return;
+  }
+
+  for (const repo of repos) {
+    process.stdout.write(`  ${repo}\n`);
+  }
+}
+
 const configCmd = program
   .command('config')
   .description('Read and write the global wdid config file')
@@ -745,7 +817,10 @@ Examples:
   $ wdid config get togglApiToken                 secrets are masked
   $ wdid config get togglApiToken --show-secrets  reveal the secret
   $ wdid config list                              show all set fields
-  $ wdid config path                              print the config file path`,
+  $ wdid config path                              print the config file path
+  $ wdid config repo add ~/work/api               add a repo to defaultRepos
+  $ wdid config repo remove ~/work/api            remove a repo from defaultRepos
+  $ wdid config repo list                         show configured repos`,
 );
 
 configCmd
@@ -811,6 +886,54 @@ configCmd
     process.stdout.write(renderConfigKeys() + '\n');
   });
 
+const configRepoCmd = configCmd
+  .command('repo')
+  .description('Manage the defaultRepos array (add / remove / list)')
+  .action(() => {
+    configRepoCmd.help();
+  });
+
+configRepoCmd
+  .command('add <path>')
+  .description(
+    'Add a repo path to defaultRepos. Tilde paths are preserved; relative paths are resolved.',
+  )
+  .action(async (path: string) => {
+    try {
+      await runConfigRepoAdd(path);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
+configRepoCmd
+  .command('remove <path>')
+  .description('Remove a repo path from defaultRepos.')
+  .action(async (path: string) => {
+    try {
+      await runConfigRepoRemove(path);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
+configRepoCmd
+  .command('list')
+  .description('List the configured repo paths.')
+  .action(async () => {
+    try {
+      await runConfigRepoList();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(renderError(message) + '\n');
+      process.exitCode = 1;
+    }
+  });
+
 program.addHelpText(
   'after',
   `
@@ -829,4 +952,4 @@ if (process.argv.length <= 2) {
   program.help();
 }
 
-program.parseAsync(process.argv);
+void program.parseAsync(process.argv);
