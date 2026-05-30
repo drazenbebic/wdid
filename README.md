@@ -241,6 +241,22 @@ gcal runs first so meeting times anchor the day's entries. If gcal isn't configu
 
 The individual `wdid git sync` and `wdid gcal sync` commands stay around — they're the right tool when you want absolute granularity or are debugging one source.
 
+## Pair with the Claude Code skill
+
+This repo ships an [agent skill](.claude/skills/wdid/SKILL.md) for [Claude Code](https://claude.com/claude-code) that teaches the agent when to invoke `wdid` (timesheet questions, standup drafts, meeting + git → Toggl sync) and the workflow rules around `--json`, dry-runs, and idempotency. When the agent surfaces JIRA-style ticket keys via `wdid --json`, the skill explains how to enrich them with [`atlassian-acli`](https://github.com/moonshiner-agency/skills/blob/main/atlassian-acli/SKILL.md) for narrated standups.
+
+When you're working inside this repo, Claude Code auto-loads the skill as a project-scoped skill. To activate it everywhere (i.e., to use `wdid` ergonomics in any directory):
+
+```sh
+# Copy once (no upstream tracking)
+cp -r .claude/skills/wdid ~/.claude/skills/
+
+# Or symlink (stays in sync with the in-repo version)
+ln -s "$(pwd)/.claude/skills/wdid" ~/.claude/skills/wdid
+```
+
+The skill file itself doesn't ship in the npm bundle — it's a repo-only resource for Claude Code users.
+
 ## Managing config
 
 `wdid config` provides six subcommands for the **global** config (`~/.config/wdid/config.json` — honors `XDG_CONFIG_HOME`): `set`, `get`, `list`, `path`, `keys`, and `repo` (with its own `add` / `remove` / `list`). Repo-level configs are read but not written by these commands; edit them by hand.
