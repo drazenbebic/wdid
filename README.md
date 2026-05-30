@@ -28,12 +28,13 @@ This puts a `wdid` binary on your `PATH`.
 ## Usage
 
 ```sh
-wdid                       # all commits authored by you, across all branches
+wdid                       # show help (no args = nothing to do)
 wdid today                 # commits from today
 wdid yesterday             # commits from yesterday
 wdid 2026-05-27            # commits from a specific day (YYYY-MM-DD)
 wdid 2026-05               # commits from a specific month (YYYY-MM)
 wdid --from 2026-05-01 --to 2026-05-07   # a date range
+wdid --all                 # all commits, no date filter
 wdid --author "Jane Doe"   # someone else's commits
 wdid --repo ../api ../web  # query multiple repos at once
 ```
@@ -77,7 +78,8 @@ With `--group-by-day`, the date moves into a section heading instead of repeatin
 
 | Option                     | Description                                                                                  |
 | -------------------------- | -------------------------------------------------------------------------------------------- |
-| `[date]`                   | A `YYYY-MM-DD` date, a `YYYY-MM` month, or the literal `today` / `yesterday`. Omit for all.  |
+| `[date]`                   | A `YYYY-MM-DD` date, a `YYYY-MM` month, or the literal `today` / `yesterday`.                |
+| `--all`                    | Show all history (no date filter). Required to opt into the unfiltered view explicitly.      |
 | `--from <date>`            | Start date (inclusive).                                                                      |
 | `--to <date>`              | End date (inclusive).                                                                        |
 | `--author <name>`          | Override the git author. Defaults to `git config user.name` (or `defaultAuthor` in config).  |

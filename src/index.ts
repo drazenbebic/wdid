@@ -573,8 +573,9 @@ program
   .addHelpText('before', banner)
   .argument(
     '[date]',
-    'a YYYY-MM-DD date, YYYY-MM month, "today", or "yesterday"; omit to show all history',
+    'a YYYY-MM-DD date, YYYY-MM month, "today", or "yesterday"',
   )
+  .option('--all', 'show all history (no date filter)')
   .option('--from <date>', 'start date (YYYY-MM-DD, "today", or "yesterday")')
   .option('--to <date>', 'end date (YYYY-MM-DD, "today", or "yesterday")')
   .option(
@@ -622,7 +623,22 @@ program
 
 const togglCmd = program
   .command('toggl')
-  .description('Toggl integration commands');
+  .description('Toggl integration commands')
+  .action(() => {
+    togglCmd.help();
+  });
+
+togglCmd.addHelpText(
+  'after',
+  `
+Examples:
+  $ wdid toggl sync                                  push today's commits
+  $ wdid toggl sync yesterday                        push yesterday's commits
+  $ wdid toggl sync 2026-05-27                       push a specific day
+  $ wdid toggl sync today --dry-run                  preview without pushing
+  $ wdid toggl sync --workspace 12345 today          override the workspace
+  $ wdid toggl sync --from 2026-05-25 --to 2026-05-27  push a multi-day range`,
+);
 
 togglCmd
   .command('sync [date]')
@@ -712,7 +728,25 @@ function runConfigPath(): void {
 
 const configCmd = program
   .command('config')
-  .description('Read and write the global wdid config file');
+  .description('Read and write the global wdid config file')
+  .action(() => {
+    configCmd.help();
+  });
+
+configCmd.addHelpText(
+  'after',
+  `
+Examples:
+  $ wdid config keys                              list every available key
+  $ wdid config set togglApiToken tok_abc123      set a scalar field
+  $ wdid config set togglWorkspaceId 12345        numbers are parsed
+  $ wdid config set togglOneEntryPerTicket false  booleans take true/false
+  $ wdid config set togglProjects.ABC- 67890      set a nested record entry
+  $ wdid config get togglApiToken                 secrets are masked
+  $ wdid config get togglApiToken --show-secrets  reveal the secret
+  $ wdid config list                              show all set fields
+  $ wdid config path                              print the config file path`,
+);
 
 configCmd
   .command('set <key> <value>')
@@ -776,5 +810,23 @@ configCmd
   .action(() => {
     process.stdout.write(renderConfigKeys() + '\n');
   });
+
+program.addHelpText(
+  'after',
+  `
+Examples:
+  $ wdid today                              commits from today
+  $ wdid yesterday                          commits from yesterday
+  $ wdid 2026-05-27                         commits from a specific day
+  $ wdid 2026-05                            commits from a whole month
+  $ wdid --from 2026-05-01 --to 2026-05-07  a date range
+  $ wdid --all                              all history, no filter
+  $ wdid toggl sync today                   push today's commits to Toggl
+  $ wdid config list                        show global config`,
+);
+
+if (process.argv.length <= 2) {
+  program.help();
+}
 
 program.parseAsync(process.argv);
