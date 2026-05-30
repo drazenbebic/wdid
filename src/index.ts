@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { banner } from './utils/banner.js';
 import { registerDefaultCommand } from './commands/default.js';
 import { registerGitCommand } from './commands/git.js';
+import { registerGcalCommand } from './commands/gcal.js';
 import { registerConfigCommand } from './commands/config.js';
 
 declare const __VERSION__: string;
@@ -17,6 +18,7 @@ program
 
 registerDefaultCommand(program);
 registerGitCommand(program);
+registerGcalCommand(program);
 registerConfigCommand(program);
 
 program.addHelpText(
@@ -30,6 +32,7 @@ Examples:
   $ wdid --from 2026-05-01 --to 2026-05-07  a date range
   $ wdid --all                              all history, no filter
   $ wdid git sync today                     push today's commits to Toggl
+  $ wdid gcal sync today                    push today's meetings to Toggl
   $ wdid config list                        show global config`,
 );
 

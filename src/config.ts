@@ -19,6 +19,15 @@ export interface WdidConfig {
   togglDayStartHour?: number;
   togglOneEntryPerTicket?: boolean;
   togglIgnoreSubjectPattern?: string;
+  gcalClientId?: string;
+  gcalClientSecret?: string;
+  gcalRefreshToken?: string;
+  gcalAuthorizedEmail?: string;
+  gcalSkipDeclined?: boolean;
+  gcalSkipAllDay?: boolean;
+  gcalIgnoreTitlePattern?: string;
+  gcalProjects?: Record<string, number>;
+  gcalDefaultProjectId?: number;
 }
 
 export const TOGGL_DEFAULTS = {
@@ -26,6 +35,12 @@ export const TOGGL_DEFAULTS = {
   dayStartHour: 9,
   oneEntryPerTicket: true,
   ignoreSubjectPattern: '\\bmerge\\b',
+} as const;
+
+export const GCAL_DEFAULTS = {
+  skipDeclined: true,
+  skipAllDay: true,
+  ignoreTitlePattern: '\\b(OOO|Out of office|Lunch|Focus)\\b',
 } as const;
 
 export const DEFAULT_COLUMN_LABELS: Record<TicketFormat, string> = {
@@ -279,6 +294,83 @@ export function validateConfig(raw: unknown): WdidConfig {
     }
 
     cfg.togglIgnoreSubjectPattern = obj.togglIgnoreSubjectPattern;
+  }
+
+  for (const stringField of [
+    'gcalClientId',
+    'gcalClientSecret',
+    'gcalRefreshToken',
+    'gcalAuthorizedEmail',
+  ] as const) {
+    if (stringField in obj) {
+      if (typeof obj[stringField] !== 'string') {
+        throw new Error(`${stringField} must be a string`);
+      }
+
+      cfg[stringField] = obj[stringField] as string;
+    }
+  }
+
+  for (const boolField of ['gcalSkipDeclined', 'gcalSkipAllDay'] as const) {
+    if (boolField in obj) {
+      if (typeof obj[boolField] !== 'boolean') {
+        throw new Error(`${boolField} must be a boolean`);
+      }
+
+      cfg[boolField] = obj[boolField] as boolean;
+    }
+  }
+
+  if ('gcalIgnoreTitlePattern' in obj) {
+    if (typeof obj.gcalIgnoreTitlePattern !== 'string') {
+      throw new Error('gcalIgnoreTitlePattern must be a string');
+    }
+
+    if (obj.gcalIgnoreTitlePattern.length > MAX_CUSTOM_PATTERN_LENGTH) {
+      throw new Error(
+        `gcalIgnoreTitlePattern is ${obj.gcalIgnoreTitlePattern.length} characters; limit is ${MAX_CUSTOM_PATTERN_LENGTH}`,
+      );
+    }
+
+    cfg.gcalIgnoreTitlePattern = obj.gcalIgnoreTitlePattern;
+  }
+
+  if ('gcalProjects' in obj) {
+    const raw = obj.gcalProjects;
+
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new Error(
+        'gcalProjects must be an object mapping title-regex → project ID',
+      );
+    }
+
+    const map: Record<string, number> = {};
+    for (const [pattern, projectId] of Object.entries(raw)) {
+      if (
+        typeof projectId !== 'number' ||
+        !Number.isInteger(projectId) ||
+        projectId < 1
+      ) {
+        throw new Error(
+          `gcalProjects["${pattern}"] must be a positive integer`,
+        );
+      }
+
+      map[pattern] = projectId;
+    }
+    cfg.gcalProjects = map;
+  }
+
+  if ('gcalDefaultProjectId' in obj) {
+    if (
+      typeof obj.gcalDefaultProjectId !== 'number' ||
+      !Number.isInteger(obj.gcalDefaultProjectId) ||
+      obj.gcalDefaultProjectId < 1
+    ) {
+      throw new Error('gcalDefaultProjectId must be a positive integer');
+    }
+
+    cfg.gcalDefaultProjectId = obj.gcalDefaultProjectId;
   }
 
   return cfg;

@@ -12,7 +12,7 @@ import {
 } from '../config.js';
 import {
   enumerateDates,
-  fetchSyncedShas,
+  fetchSyncedMarkers,
   planEntries,
   pushEntries,
   type TogglAuth,
@@ -159,8 +159,8 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
     );
     const commits = perRepoCommits.flat();
 
-    const existingSyncedShas = ctx.auth
-      ? await fetchSyncedShas(ctx.auth, date)
+    const existingSyncedMarkers = ctx.auth
+      ? await fetchSyncedMarkers(ctx.auth, date)
       : new Set<string>();
 
     plan = planEntries(commits, {
@@ -169,7 +169,7 @@ async function syncOneDay(date: string, ctx: DayContext): Promise<DayResult> {
       dayStartHour: ctx.dayStartHour,
       projects: ctx.projects,
       defaultProjectId: ctx.defaultProjectId,
-      existingSyncedShas,
+      existingSyncedMarkers,
       oneEntryPerTicket: ctx.oneEntryPerTicket,
       ignoreSubjectPattern: ctx.ignoreSubjectPattern,
     });

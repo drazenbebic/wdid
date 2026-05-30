@@ -3,8 +3,8 @@ import type { CommitEntry } from '../sources/git.js';
 import {
   cleanSubjectForToggl,
   enumerateDates,
-  extractSyncedShasFromDescription,
-  fetchSyncedShas,
+  extractSyncedMarkersFromDescription,
+  fetchSyncedMarkers,
   findProjectId,
   MAX_SYNC_RANGE_DAYS,
   planEntries,
@@ -29,7 +29,7 @@ const baseOptions = {
   defaultDurationMinutes: 30,
   dayStartHour: 9,
   projects: {},
-  existingSyncedShas: new Set<string>(),
+  existingSyncedMarkers: new Set<string>(),
   oneEntryPerTicket: false,
 };
 
@@ -113,28 +113,43 @@ describe('findProjectId', () => {
   });
 });
 
-describe('extractSyncedShasFromDescription', () => {
-  it('finds a single SHA marker', () => {
+describe('extractSyncedMarkersFromDescription', () => {
+  it('finds a legacy SHA marker and normalizes it to git:<sha>', () => {
     expect(
-      extractSyncedShasFromDescription('feat: add login (wdid abc1234)'),
-    ).toEqual(['abc1234']);
+      extractSyncedMarkersFromDescription('feat: add login (wdid abc1234)'),
+    ).toEqual(['git:abc1234']);
   });
 
-  it('finds multiple SHA markers in order', () => {
+  it('finds a source-tagged git marker', () => {
     expect(
-      extractSyncedShasFromDescription(
-        'feat: a; fix: b (wdid abc1234) (wdid def5678)',
+      extractSyncedMarkersFromDescription('feat: add login (wdid git:abc1234)'),
+    ).toEqual(['git:abc1234']);
+  });
+
+  it('finds a source-tagged gcal marker', () => {
+    expect(
+      extractSyncedMarkersFromDescription('1:1 meeting (wdid gcal:evt_xyz123)'),
+    ).toEqual(['gcal:evt_xyz123']);
+  });
+
+  it('mixes legacy and new markers in order', () => {
+    expect(
+      extractSyncedMarkersFromDescription(
+        'a (wdid abc1234) b (wdid git:def5678) c (wdid gcal:evt_42)',
       ),
-    ).toEqual(['abc1234', 'def5678']);
+    ).toEqual(['git:abc1234', 'git:def5678', 'gcal:evt_42']);
   });
 
   it('returns an empty array when no markers', () => {
-    expect(extractSyncedShasFromDescription('feat: add login')).toEqual([]);
+    expect(extractSyncedMarkersFromDescription('feat: add login')).toEqual([]);
   });
 
-  it('ignores malformed markers', () => {
-    expect(extractSyncedShasFromDescription('(wdid xyz)')).toEqual([]);
-    expect(extractSyncedShasFromDescription('(wdid abc123)')).toEqual([]);
+  it('ignores malformed markers (preserves legacy strictness)', () => {
+    // Legacy form requires exactly 7 hex chars — these don't qualify.
+    expect(extractSyncedMarkersFromDescription('(wdid xyz)')).toEqual([]);
+    expect(extractSyncedMarkersFromDescription('(wdid abc123)')).toEqual([]);
+    // New form requires the source prefix — bare anything-else doesn't match.
+    expect(extractSyncedMarkersFromDescription('(wdid event_xyz)')).toEqual([]);
   });
 });
 
@@ -185,7 +200,7 @@ describe('planEntries — commit granularity (oneEntryPerTicket=false)', () => {
       [commit({ sha: 'abc1234567', description: 'feat: a' })],
       baseOptions,
     );
-    expect(plan[0]!.description).toBe('a (wdid abc1234)');
+    expect(plan[0]!.description).toBe('a (wdid git:abc1234)');
   });
 
   it('prefixes with the ticket when one is present', () => {
@@ -200,7 +215,7 @@ describe('planEntries — commit granularity (oneEntryPerTicket=false)', () => {
       baseOptions,
     );
     expect(plan[0]!.description).toBe(
-      'EN-4435: remove requestBody (wdid abc1234)',
+      'EN-4435: remove requestBody (wdid git:abc1234)',
     );
   });
 
@@ -236,7 +251,7 @@ describe('planEntries — commit granularity (oneEntryPerTicket=false)', () => {
         commit({ sha: 'a'.repeat(40), description: 'a' }),
         commit({ sha: 'b'.repeat(40), description: 'b' }),
       ],
-      { ...baseOptions, existingSyncedShas: new Set(['aaaaaaa']) },
+      { ...baseOptions, existingSyncedMarkers: new Set(['git:aaaaaaa']) },
     );
     expect(plan[0]!.alreadySynced).toBe(true);
     expect(plan[1]!.alreadySynced).toBe(false);
@@ -267,7 +282,7 @@ describe('planEntries — ticket granularity (oneEntryPerTicket=true)', () => {
     expect(plan).toHaveLength(1);
     expect(plan[0]!.commitCount).toBe(2);
     expect(plan[0]!.description).toBe(
-      'ABC-1: a; b (wdid aaaaaaa) (wdid bbbbbbb)',
+      'ABC-1: a; b (wdid git:aaaaaaa) (wdid git:bbbbbbb)',
     );
     expect(plan[0]!.shas).toEqual(['a'.repeat(40), 'b'.repeat(40)]);
   });
@@ -307,7 +322,7 @@ describe('planEntries — ticket granularity (oneEntryPerTicket=true)', () => {
   it('marks a group as alreadySynced only when all its SHAs are known', () => {
     const optsWithOne = {
       ...opts,
-      existingSyncedShas: new Set(['aaaaaaa']),
+      existingSyncedMarkers: new Set(['git:aaaaaaa']),
     };
     const plan = planEntries(
       [
@@ -321,7 +336,7 @@ describe('planEntries — ticket granularity (oneEntryPerTicket=true)', () => {
 
     const optsWithBoth = {
       ...opts,
-      existingSyncedShas: new Set(['aaaaaaa', 'bbbbbbb']),
+      existingSyncedMarkers: new Set(['git:aaaaaaa', 'git:bbbbbbb']),
     };
     const planAll = planEntries(
       [
@@ -368,7 +383,7 @@ describe('planEntries — ignoreSubjectPattern', () => {
   });
 });
 
-describe('fetchSyncedShas / pushEntries — mocked fetch', () => {
+describe('fetchSyncedMarkers / pushEntries — mocked fetch', () => {
   beforeEach(() => {
     vi.spyOn(globalThis, 'fetch');
   });
@@ -377,20 +392,26 @@ describe('fetchSyncedShas / pushEntries — mocked fetch', () => {
     vi.restoreAllMocks();
   });
 
-  it('extracts SHA markers from fetched entries (including multi-SHA)', async () => {
+  it('extracts markers from fetched entries (legacy + new shapes mixed)', async () => {
     (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       ok: true,
       json: async () => [
         { description: 'feat: a (wdid abc1234)' },
-        { description: 'feat: b; fix: c (wdid def5678) (wdid 9abcdef)' },
+        { description: 'feat: b; fix: c (wdid git:def5678) (wdid 9abcdef)' },
+        { description: '1:1 standup (wdid gcal:evt_xyz)' },
         { description: 'manual entry — no marker' },
         { description: null },
       ],
     } as Response);
 
-    const result = await fetchSyncedShas({ apiToken: 'token' }, '2026-05-27');
+    const result = await fetchSyncedMarkers(
+      { apiToken: 'token' },
+      '2026-05-27',
+    );
 
-    expect(result).toEqual(new Set(['abc1234', 'def5678', '9abcdef']));
+    expect(result).toEqual(
+      new Set(['git:abc1234', 'git:def5678', 'git:9abcdef', 'gcal:evt_xyz']),
+    );
   });
 
   it('throws on non-ok fetch response', async () => {
@@ -401,7 +422,7 @@ describe('fetchSyncedShas / pushEntries — mocked fetch', () => {
     } as Response);
 
     await expect(
-      fetchSyncedShas({ apiToken: 'bad' }, '2026-05-27'),
+      fetchSyncedMarkers({ apiToken: 'bad' }, '2026-05-27'),
     ).rejects.toThrow(/401 Unauthorized/);
   });
 
@@ -414,7 +435,7 @@ describe('fetchSyncedShas / pushEntries — mocked fetch', () => {
         commit({ sha: 'a'.repeat(40), description: 'a' }),
         commit({ sha: 'b'.repeat(40), description: 'b' }),
       ],
-      { ...baseOptions, existingSyncedShas: new Set(['aaaaaaa']) },
+      { ...baseOptions, existingSyncedMarkers: new Set(['git:aaaaaaa']) },
     );
 
     const result = await pushEntries({ apiToken: 'token' }, 12345, plan);

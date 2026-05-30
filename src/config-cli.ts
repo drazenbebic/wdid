@@ -95,6 +95,54 @@ export const FIELDS: Record<string, FieldSpec> = {
     description:
       'Subjects matching this regex (case-insensitive) are skipped. "" to disable.',
   },
+  gcalClientId: {
+    type: 'string',
+    description:
+      'Override the bundled Google OAuth client ID (BYO your own OAuth client).',
+  },
+  gcalClientSecret: {
+    type: 'string',
+    secret: true,
+    description:
+      'Override the bundled Google OAuth client secret (paired with gcalClientId).',
+  },
+  gcalRefreshToken: {
+    type: 'string',
+    secret: true,
+    description:
+      'OAuth refresh token persisted by `wdid gcal auth`. Do not set by hand.',
+  },
+  gcalAuthorizedEmail: {
+    type: 'string',
+    description:
+      'Email of the Google account authorized by `wdid gcal auth`. Read-only label.',
+  },
+  gcalSkipDeclined: {
+    type: 'boolean',
+    default: true,
+    description: 'Skip events the user has declined.',
+  },
+  gcalSkipAllDay: {
+    type: 'boolean',
+    default: true,
+    description: 'Skip all-day events (OOO blocks, focus days, etc.).',
+  },
+  gcalIgnoreTitlePattern: {
+    type: 'string',
+    default: '\\b(OOO|Out of office|Lunch|Focus)\\b',
+    description:
+      'Event titles matching this regex (case-insensitive) are skipped. "" to disable.',
+  },
+  gcalProjects: {
+    type: 'number-record',
+    nested: true,
+    description: 'Map of title-regex → Toggl project ID. First match wins.',
+  },
+  gcalDefaultProjectId: {
+    type: 'number',
+    description:
+      'Project ID for events whose title matches none of gcalProjects.',
+  },
 };
 
 export interface DottedKey {

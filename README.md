@@ -132,7 +132,7 @@ The column header is picked automatically based on the active format. To overrid
 
 ## Git → Toggl sync
 
-`wdid git sync [date]` pushes the day's git commits to Toggl as time entries. By default, commits with the same ticket are **collapsed into a single entry** (duration scales with commit count) and commits whose subject matches `\bmerge\b` are skipped. Entries stack from a configurable day-start hour — you adjust the exact times in Toggl yourself. The sync is **idempotent**: each entry's description carries one `(wdid <short-sha>)` marker per included commit, and re-running skips commits already pushed.
+`wdid git sync [date]` pushes the day's git commits to Toggl as time entries. By default, commits with the same ticket are **collapsed into a single entry** (duration scales with commit count) and commits whose subject matches `\bmerge\b` are skipped. Entries stack from a configurable day-start hour — you adjust the exact times in Toggl yourself. The sync is **idempotent**: each entry's description carries one `(wdid git:<short-sha>)` marker per included commit, and re-running skips commits already pushed. (Legacy `(wdid <sha>)` markers from older versions are still recognized.)
 
 Descriptions are condensed for Toggl: the conventional-commit prefix (`feat:`, `chore(ABC-123):`, `fix!:`, etc.) is stripped, and the ticket — if any — is prepended once. So `chore(EN-4435): remove requestBody` becomes `EN-4435: remove requestBody`. Aggregated entries look like `EN-4435: subject A; subject B; subject C`.
 
@@ -180,6 +180,36 @@ Add these alongside the other config fields:
 ### Auth
 
 The API token is resolved in this order: `TOGGL_API_TOKEN` env var > `togglApiToken` in config. The env var path is preferred so you don't have to commit (or remember not to commit) the token.
+
+## Google Calendar → Toggl sync
+
+`wdid gcal sync [date]` pushes the day's calendar meetings to Toggl as time entries. Each event becomes its own entry at its actual start time and duration. Like the git path, the sync is **idempotent**: every entry's description carries a `(wdid gcal:<event-id>)` marker, and re-runs skip events already pushed.
+
+```sh
+wdid gcal auth                                       # one-time browser sign-in
+wdid gcal status                                     # show authorized email + token state
+wdid gcal sync                                       # push today's meetings
+wdid gcal sync yesterday                             # push yesterday's
+wdid gcal sync today --dry-run                       # preview without pushing
+wdid gcal sync --from 2026-05-25 --to 2026-05-27     # push a multi-day range
+wdid gcal logout                                     # clear the stored refresh token
+```
+
+The first run of `wdid gcal auth` opens your browser to Google's consent screen. If you're outside Moonshiner you'll need to either receive the bundled wdid build with credentials, or set up your own Google Cloud OAuth client and configure `gcalClientId` / `gcalClientSecret`.
+
+### Calendar config
+
+| Field                    | Type                     | Description                                                                                                          |
+| ------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `gcalClientId`           | `string`                 | Override the bundled Google OAuth client ID (BYO your own OAuth client).                                             |
+| `gcalClientSecret`       | `string` (secret)        | Override the bundled Google OAuth client secret. Paired with `gcalClientId`.                                         |
+| `gcalRefreshToken`       | `string` (secret)        | OAuth refresh token persisted by `wdid gcal auth`. Don't set by hand.                                                |
+| `gcalAuthorizedEmail`    | `string`                 | Email of the Google account authorized by `wdid gcal auth`. Read-only label.                                         |
+| `gcalSkipDeclined`       | `boolean`                | Skip events the user has declined. Default `true`.                                                                   |
+| `gcalSkipAllDay`         | `boolean`                | Skip all-day events (OOO blocks, focus days, etc.). Default `true`.                                                  |
+| `gcalIgnoreTitlePattern` | `string` (regex)         | Event titles matching this pattern (case-insensitive) are skipped. Default `\b(OOO\|Out of office\|Lunch\|Focus)\b`. |
+| `gcalProjects`           | `Record<string, number>` | Map of title-regex → Toggl project ID. First match wins (iteration is config-declaration order).                     |
+| `gcalDefaultProjectId`   | `number`                 | Project ID for events that don't match any `gcalProjects` pattern.                                                   |
 
 ## Managing config
 

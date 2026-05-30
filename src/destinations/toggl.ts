@@ -6,15 +6,21 @@ export interface TogglAuth {
   apiToken: string;
 }
 
+export type SourceName = 'git' | 'gcal';
+
 export interface TogglEntryPlan {
+  source: SourceName;
+  /** For git: short SHAs of aggregated commits. For gcal: the single event ID. */
   shas: string[];
   shortShas: string[];
   description: string;
   start: string;
   durationSeconds: number;
   projectId: number | null;
+  /** For git: matched ticket prefix. For gcal: matched title pattern. */
   matchedTicketPrefix: string | null;
   ticket: string | null;
+  /** For git: number of aggregated commits. For gcal: always 1. */
   commitCount: number;
   alreadySynced: boolean;
 }
@@ -25,9 +31,18 @@ export interface PlanOptions {
   dayStartHour: number;
   projects: Record<string, number>;
   defaultProjectId?: number;
-  existingSyncedShas: Set<string>;
+  existingSyncedMarkers: Set<string>;
   oneEntryPerTicket: boolean;
   ignoreSubjectPattern?: RegExp;
+}
+
+/**
+ * Encode a source/id pair as the dedup-set key, e.g. "git:abc1234" or
+ * "gcal:event_xyz". Used as the Set<string> entry both for parsed markers
+ * read from Toggl and for the markers we're about to write.
+ */
+export function markerKey(source: SourceName, id: string): string {
+  return `${source}:${id}`;
 }
 
 export function shortenSha(sha: string): string {
@@ -54,20 +69,31 @@ export function findProjectId(
   return { projectId: defaultProjectId ?? null, matchedPrefix: null };
 }
 
-const SHA_MARKER_GLOBAL = /\(wdid ([0-9a-f]{7})\)/g;
+// Matches two shapes:
+//   - Legacy `(wdid <7-hex-sha>)`        → treated as git
+//   - New     `(wdid (git|gcal):<id>)`   → source-tagged
+// The legacy branch is strict (7 hex chars) so we don't false-positive on any
+// stray `(wdid foo)` text a user might have written by hand.
+const MARKER_GLOBAL = /\(wdid (?:(git|gcal):([\w-]+)|([0-9a-f]{7}))\)/g;
 
-export function extractSyncedShasFromDescription(
+export function extractSyncedMarkersFromDescription(
   description: string,
 ): string[] {
-  const shas: string[] = [];
+  const markers: string[] = [];
 
-  for (const match of description.matchAll(SHA_MARKER_GLOBAL)) {
-    if (match[1]) {
-      shas.push(match[1]);
+  for (const match of description.matchAll(MARKER_GLOBAL)) {
+    const newSource = match[1] as SourceName | undefined;
+    const newId = match[2];
+    const legacySha = match[3];
+
+    if (newSource && newId) {
+      markers.push(markerKey(newSource, newId));
+    } else if (legacySha) {
+      markers.push(markerKey('git', legacySha));
     }
   }
 
-  return shas;
+  return markers;
 }
 
 function groupKey(commit: CommitEntry, oneEntryPerTicket: boolean): string {
@@ -80,8 +106,8 @@ function groupKey(commit: CommitEntry, oneEntryPerTicket: boolean): string {
   return `sha:${commit.sha}`;
 }
 
-function buildMarker(shortShas: string[]): string {
-  return shortShas.map(s => `(wdid ${s})`).join(' ');
+export function buildMarker(source: SourceName, ids: string[]): string {
+  return ids.map(id => `(wdid ${source}:${id})`).join(' ');
 }
 
 const CONVENTIONAL_PREFIX = /^\w+(\([^)]+\))?!?:\s*/;
@@ -148,7 +174,7 @@ export function planEntries(
       .map(c => cleanSubjectForToggl(c.description, ticket))
       .filter(s => s.length > 0);
     const joined = cleanedSubjects.join('; ');
-    const marker = buildMarker(shortShas);
+    const marker = buildMarker('git', shortShas);
     const body = ticket
       ? joined.length > 0
         ? `${ticket}: ${joined}`
@@ -164,10 +190,11 @@ export function planEntries(
     );
 
     const alreadySynced = shortShas.every(s =>
-      options.existingSyncedShas.has(s),
+      options.existingSyncedMarkers.has(markerKey('git', s)),
     );
 
     plans.push({
+      source: 'git',
       shas,
       shortShas,
       description,
@@ -227,7 +254,7 @@ export function enumerateDates(from: string, to: string): string[] {
   return result;
 }
 
-export async function fetchSyncedShas(
+export async function fetchSyncedMarkers(
   auth: TogglAuth,
   date: string,
 ): Promise<Set<string>> {
@@ -245,15 +272,17 @@ export async function fetchSyncedShas(
   const entries = (await response.json()) as Array<{
     description?: string | null;
   }>;
-  const shas = new Set<string>();
+  const markers = new Set<string>();
 
   for (const e of entries) {
-    for (const sha of extractSyncedShasFromDescription(e.description ?? '')) {
-      shas.add(sha);
+    for (const marker of extractSyncedMarkersFromDescription(
+      e.description ?? '',
+    )) {
+      markers.add(marker);
     }
   }
 
-  return shas;
+  return markers;
 }
 
 export interface PushResult {
