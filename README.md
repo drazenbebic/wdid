@@ -30,6 +30,7 @@ This puts a `wdid` binary on your `PATH`.
 ```sh
 wdid                       # all commits authored by you, across all branches
 wdid today                 # commits from today
+wdid yesterday             # commits from yesterday
 wdid 2026-05-27            # commits from a specific day (YYYY-MM-DD)
 wdid --from 2026-05-01 --to 2026-05-07   # a date range
 wdid --author "Jane Doe"   # someone else's commits
@@ -75,7 +76,7 @@ With `--group-by-day`, the date moves into a section heading instead of repeatin
 
 | Option                     | Description                                                                                  |
 | -------------------------- | -------------------------------------------------------------------------------------------- |
-| `[date]`                   | A `YYYY-MM-DD` date or the literal `today`. Omit to show all history.                        |
+| `[date]`                   | A `YYYY-MM-DD` date or the literal `today` / `yesterday`. Omit to show all history.          |
 | `--from <date>`            | Start date (inclusive).                                                                      |
 | `--to <date>`              | End date (inclusive).                                                                        |
 | `--author <name>`          | Override the git author. Defaults to `git config user.name` (or `defaultAuthor` in config).  |

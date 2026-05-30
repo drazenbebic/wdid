@@ -94,8 +94,17 @@ function resolveDate(input: string): string {
     return new Date().toISOString().slice(0, 10);
   }
 
+  if (input === 'yesterday') {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - 1);
+
+    return d.toISOString().slice(0, 10);
+  }
+
   if (!isIsoDate(input)) {
-    throw new Error(`invalid date "${input}" — expected YYYY-MM-DD or "today"`);
+    throw new Error(
+      `invalid date "${input}" — expected YYYY-MM-DD, "today", or "yesterday"`,
+    );
   }
 
   return input;
@@ -494,9 +503,12 @@ program
   .name('wdid')
   .description('What did I do? — summarize your git commits as a table')
   .version(__VERSION__, '-V, --version', 'output the version number')
-  .argument('[date]', 'a YYYY-MM-DD date or "today"; omit to show all history')
-  .option('--from <date>', 'start date (YYYY-MM-DD or "today")')
-  .option('--to <date>', 'end date (YYYY-MM-DD or "today")')
+  .argument(
+    '[date]',
+    'a YYYY-MM-DD date, "today", or "yesterday"; omit to show all history',
+  )
+  .option('--from <date>', 'start date (YYYY-MM-DD, "today", or "yesterday")')
+  .option('--to <date>', 'end date (YYYY-MM-DD, "today", or "yesterday")')
   .option(
     '--author <name>',
     'override the git author (defaults to git config user.name, then defaultAuthor in config)',
